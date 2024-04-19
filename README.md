@@ -160,6 +160,42 @@ func streamExecTool(ctx context.Context) error {
 }
 ```
 
+### StreamExecToolWithEvents
+
+Executes a gptscript with optional input and arguments, and returns the stdout, stderr, and gptscript events streams.
+
+**Options:**
+
+These are optional options that can be passed to the `StreamExecTool` function.
+Neither option is required, and the defaults will reduce the number of calls made to the Model API.
+
+- `cache`: Enable or disable caching.
+- `cacheDir`: Specify the cache directory.
+
+**Usage:**
+
+```go
+package main
+
+import (
+	"context"
+
+	gogptscript "github.com/gptscript-ai/go-gptscript"
+)
+
+func streamExecTool(ctx context.Context) error {
+	t := gogptscript.Tool{
+		Instructions: "who was the president of the united states in 1928?",
+	}
+
+	stdOut, stdErr, events, wait := gogptscript.StreamExecToolWithEvents(ctx, gogptscript.Opts{}, t)
+
+	// Read from stdOut and stdErr before call wait()
+
+	return wait()
+}
+```
+
 ### streamExecFile
 
 **Options:**
@@ -179,7 +215,6 @@ package main
 
 import (
 	"context"
-	"io"
 
 	gogptscript "github.com/gptscript-ai/go-gptscript"
 )
@@ -190,6 +225,42 @@ func streamExecTool(ctx context.Context) error {
 	}
 
 	stdOut, stdErr, wait := gogptscript.StreamExecFile(ctx, "./hello.gpt", "--input world", opts)
+
+	// Read from stdOut and stdErr before call wait()
+
+	return wait()
+}
+```
+
+### streamExecFileWithEvents
+
+**Options:**
+
+These are optional options that can be passed to the `exec` function.
+Neither option is required, and the defaults will reduce the number of calls made to the Model API.
+
+- `cache`: Enable or disable caching.
+- `cacheDir`: Specify the cache directory.
+
+**Usage:**
+
+The script is relative to the callers source directory.
+
+```go
+package main
+
+import (
+	"context"
+
+	gogptscript "github.com/gptscript-ai/go-gptscript"
+)
+
+func streamExecTool(ctx context.Context) error {
+	opts := gogptscript.Opts{
+		Cache: &[]bool{false}[0],
+	}
+
+	stdOut, stdErr, events, wait := gogptscript.StreamExecFileWithEvents(ctx, "./hello.gpt", "--input world", opts)
 
 	// Read from stdOut and stdErr before call wait()
 

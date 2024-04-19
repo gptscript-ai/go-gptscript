@@ -60,7 +60,7 @@ func StreamExecTool(ctx context.Context, opts Opts, tools ...fmt.Stringer) (io.R
 // StreamExecToolWithEvents will execute a tool. The tool must be a fmt.Stringer, and the string should be a valid gptscript file.
 // This returns three io.ReadClosers, one for stdout, one for stderr, and one for events, and a function to wait for the process to exit.
 // Reading from stdOut, stdErr, and events should be completed before calling the wait function.
-func StreamExecToolWithEvents[T fmt.Stringer](ctx context.Context, opts Opts, tools ...T) (io.Reader, io.Reader, io.Reader, func() error) {
+func StreamExecToolWithEvents(ctx context.Context, opts Opts, tools ...fmt.Stringer) (io.Reader, io.Reader, io.Reader, func() error) {
 	eventsRead, eventsWrite, err := os.Pipe()
 	if err != nil {
 		return new(reader), new(reader), new(reader), func() error { return err }
@@ -172,7 +172,7 @@ func toArgs(opts Opts) []string {
 	return args
 }
 
-func concatTools[T fmt.Stringer](tools []T) string {
+func concatTools(tools []fmt.Stringer) string {
 	var sb strings.Builder
 	for i, tool := range tools {
 		sb.WriteString(tool.String())
