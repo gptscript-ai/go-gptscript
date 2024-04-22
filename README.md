@@ -16,6 +16,16 @@ To use the module, you need to first set the OPENAI_API_KEY environment variable
 
 Additionally, you need the `gptscript` binary. You can install it on your system using the [installation instructions](https://github.com/gptscript-ai/gptscript?tab=readme-ov-file#1-install-the-latest-release).
 
+## Options
+
+These are optional options that can be passed to the various `exec` functions.
+None of the options is required, and the defaults will reduce the number of calls made to the Model API.
+
+- `cache`: Enable or disable caching. Default (true).
+- `cacheDir`: Specify the cache directory.
+- `quiet`: No output logging
+- `chdir`: Change current working directory
+
 ## Functions
 
 ### listTools
@@ -62,16 +72,6 @@ func listModels(ctx context.Context) ([]string, error) {
 
 Executes a prompt with optional arguments.
 
-**Options:**
-
-These are optional options that can be passed to the `ExecTool` functions.
-Neither option is required, and the defaults will reduce the number of calls made to the Model API.
-
-- `cache`: Enable or disable caching. Default (true).
-- `cacheDir`: Specify the cache directory.
-
-**Usage:**
-
 ```go
 package main
 
@@ -92,19 +92,7 @@ func runTool(ctx context.Context) (string, error) {
 
 ### ExecFile
 
-Executes a GPT script file with optional input and arguments.
-
-**Options:**
-
-These are optional options that can be passed to the `ExecFile` function.
-Neither option is required, and the defaults will reduce the number of calls made to the Model API.
-
-- `cache`: Enable or disable caching.
-- `cacheDir`: Specify the cache directory.
-
-**Usage:**
-
-The script is relative to the callers source directory.
+Executes a GPT script file with optional input and arguments. The script is relative to the callers source directory.
 
 ```go
 package main
@@ -127,16 +115,6 @@ func execFile(ctx context.Context) (string, error) {
 ### StreamExecTool
 
 Executes a gptscript with optional input and arguments, and returns the output streams.
-
-**Options:**
-
-These are optional options that can be passed to the `StreamExecTool` function.
-Neither option is required, and the defaults will reduce the number of calls made to the Model API.
-
-- `cache`: Enable or disable caching.
-- `cacheDir`: Specify the cache directory.
-
-**Usage:**
 
 ```go
 package main
@@ -164,16 +142,6 @@ func streamExecTool(ctx context.Context) error {
 
 Executes a gptscript with optional input and arguments, and returns the stdout, stderr, and gptscript events streams.
 
-**Options:**
-
-These are optional options that can be passed to the `StreamExecTool` function.
-Neither option is required, and the defaults will reduce the number of calls made to the Model API.
-
-- `cache`: Enable or disable caching.
-- `cacheDir`: Specify the cache directory.
-
-**Usage:**
-
 ```go
 package main
 
@@ -197,16 +165,6 @@ func streamExecTool(ctx context.Context) error {
 ```
 
 ### streamExecFile
-
-**Options:**
-
-These are optional options that can be passed to the `exec` function.
-Neither option is required, and the defaults will reduce the number of calls made to the Model API.
-
-- `cache`: Enable or disable caching.
-- `cacheDir`: Specify the cache directory.
-
-**Usage:**
 
 The script is relative to the callers source directory.
 
@@ -233,16 +191,6 @@ func streamExecTool(ctx context.Context) error {
 ```
 
 ### streamExecFileWithEvents
-
-**Options:**
-
-These are optional options that can be passed to the `exec` function.
-Neither option is required, and the defaults will reduce the number of calls made to the Model API.
-
-- `cache`: Enable or disable caching.
-- `cacheDir`: Specify the cache directory.
-
-**Usage:**
 
 The script is relative to the callers source directory.
 
