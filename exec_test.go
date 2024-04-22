@@ -53,6 +53,18 @@ func TestSimpleExec(t *testing.T) {
 	}
 }
 
+func TestExecFileChdir(t *testing.T) {
+	// By changing the directory here, we should be able to find the test.gpt file without `./test` (see TestStreamExecFile)
+	out, err := ExecFile(context.Background(), "test.gpt", "", Opts{Chdir: "./test"})
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	if out == "" {
+		t.Error("No output from tool")
+	}
+}
+
 func TestExecComplexTool(t *testing.T) {
 	tool := &Tool{
 		Tools:        []string{"sys.write"},

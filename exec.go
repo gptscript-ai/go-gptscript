@@ -14,6 +14,21 @@ type Opts struct {
 	DisableCache bool
 	CacheDir     string
 	Quiet        bool
+	Chdir        string
+}
+
+func (o Opts) toArgs() []string {
+	var args []string
+	if o.DisableCache {
+		args = append(args, "--disable-cache")
+	}
+	if o.CacheDir != "" {
+		args = append(args, "--cache-dir="+o.CacheDir)
+	}
+	if o.Chdir != "" {
+		args = append(args, "--chdir="+o.Chdir)
+	}
+	return append(args, "--quiet="+fmt.Sprint(o.Quiet))
 }
 
 // ListTools will list all the available tools.
@@ -33,7 +48,7 @@ func ListModels(ctx context.Context) ([]string, error) {
 
 // ExecTool will execute a tool. The tool must be a fmt.Stringer, and the string should be a valid gptscript file.
 func ExecTool(ctx context.Context, opts Opts, tools ...fmt.Stringer) (string, error) {
-	c := exec.CommandContext(ctx, getCommand(), append(toArgs(opts), "-")...)
+	c := exec.CommandContext(ctx, getCommand(), append(opts.toArgs(), "-")...)
 	c.Stdin = strings.NewReader(concatTools(tools))
 	out, err := c.CombinedOutput()
 	return string(out), err
@@ -43,7 +58,7 @@ func ExecTool(ctx context.Context, opts Opts, tools ...fmt.Stringer) (string, er
 // This returns two io.ReadClosers, one for stdout and one for stderr, and a function to wait for the process to exit.
 // Reading from stdOut and stdErr should be completed before calling the wait function.
 func StreamExecTool(ctx context.Context, opts Opts, tools ...fmt.Stringer) (io.Reader, io.Reader, func() error) {
-	c, stdout, stderr, err := setupForkCommand(ctx, "", append(toArgs(opts), "-"))
+	c, stdout, stderr, err := setupForkCommand(ctx, "", append(opts.toArgs(), "-"))
 	if err != nil {
 		return stdout, stderr, func() error { return err }
 	}
@@ -68,7 +83,7 @@ func StreamExecToolWithEvents(ctx context.Context, opts Opts, tools ...fmt.Strin
 	// Close the parent pipe after starting the child process
 	defer eventsWrite.Close()
 
-	c, stdout, stderr, err := setupForkCommand(ctx, "", append(toArgs(opts), "-"))
+	c, stdout, stderr, err := setupForkCommand(ctx, "", append(opts.toArgs(), "-"))
 	if err != nil {
 		_ = eventsRead.Close()
 		return stdout, stderr, new(reader), func() error { return err }
@@ -95,7 +110,7 @@ func StreamExecToolWithEvents(ctx context.Context, opts Opts, tools ...fmt.Strin
 // The file at the path should be a valid gptscript file.
 // The input should be command line arguments in the form of a string (i.e. "--arg1 value1 --arg2 value2").
 func ExecFile(ctx context.Context, toolPath, input string, opts Opts) (string, error) {
-	args := append(toArgs(opts), toolPath)
+	args := append(opts.toArgs(), toolPath)
 	if input != "" {
 		args = append(args, input)
 	}
@@ -110,7 +125,7 @@ func ExecFile(ctx context.Context, toolPath, input string, opts Opts) (string, e
 // This returns two io.ReadClosers, one for stdout and one for stderr, and a function to wait for the process to exit.
 // Reading from stdOut and stdErr should be completed before calling the wait function.
 func StreamExecFile(ctx context.Context, toolPath, input string, opts Opts) (io.Reader, io.Reader, func() error) {
-	args := append(toArgs(opts), toolPath)
+	args := append(opts.toArgs(), toolPath)
 	c, stdout, stderr, err := setupForkCommand(ctx, input, args)
 	if err != nil {
 		return stdout, stderr, func() error { return err }
@@ -136,7 +151,7 @@ func StreamExecFileWithEvents(ctx context.Context, toolPath, input string, opts 
 	// Close the parent pipe after starting the child process
 	defer eventsWrite.Close()
 
-	args := append(toArgs(opts), toolPath)
+	args := append(opts.toArgs(), toolPath)
 
 	c, stdout, stderr, err := setupForkCommand(ctx, input, args)
 	if err != nil {
@@ -158,18 +173,6 @@ func StreamExecFileWithEvents(ctx context.Context, toolPath, input string, opts 
 	}
 
 	return stdout, stderr, eventsRead, wait
-}
-
-func toArgs(opts Opts) []string {
-	var args []string
-	if opts.DisableCache {
-		args = append(args, "--disable-cache")
-	}
-	if opts.CacheDir != "" {
-		args = append(args, "--cache-dir="+opts.CacheDir)
-	}
-	args = append(args, "--quiet="+fmt.Sprint(opts.Quiet))
-	return args
 }
 
 func concatTools(tools []fmt.Stringer) string {
