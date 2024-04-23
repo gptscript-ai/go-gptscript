@@ -17,7 +17,7 @@ type Tool struct {
 	Args           map[string]string
 	InternalPrompt bool
 	Instructions   string
-	JsonResponse   bool
+	JSONResponse   bool
 }
 
 // NewTool is a constructor for Tool struct.
@@ -33,7 +33,7 @@ func NewTool(name, description string, tools []string, maxTokens *int, model str
 		Args:           args,
 		InternalPrompt: internalPrompt,
 		Instructions:   instructions,
-		JsonResponse:   jsonResponse,
+		JSONResponse:   jsonResponse,
 	}
 }
 
@@ -62,7 +62,7 @@ func (t *Tool) String() string {
 	if t.Temperature != nil {
 		sb.WriteString(fmt.Sprintf("Temperature: %f\n", *t.Temperature))
 	}
-	if t.JsonResponse {
+	if t.JSONResponse {
 		sb.WriteString("JSON Response: true\n")
 	}
 	if len(t.Args) > 0 {

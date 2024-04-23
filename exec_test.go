@@ -67,8 +67,7 @@ func TestExecFileChdir(t *testing.T) {
 
 func TestExecComplexTool(t *testing.T) {
 	tool := &Tool{
-		Tools:        []string{"sys.write"},
-		JsonResponse: true,
+		JSONResponse: true,
 		Instructions: `
 Create three short graphic artist descriptions and their muses.
 These should be descriptive and explain their point of view.
