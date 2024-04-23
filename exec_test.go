@@ -11,8 +11,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv("OPENAI_API_KEY") == "" {
-		panic("OPENAI_API_KEY not set")
+	if os.Getenv("OPENAI_API_KEY") != "" {
+		panic("OPENAI_API_KEY is set.")
 	}
 
 	os.Exit(m.Run())
