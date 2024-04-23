@@ -5,7 +5,10 @@ on:
       - main
     paths-ignore:
       - README.md
-  pull_request:
+  pull_request_target:
+    types:
+      - labeled
+      - unlabeled
     branches:
       - main
     paths-ignore:
@@ -26,11 +29,11 @@ jobs:
         run: make validate
       - name: Install gptscript
         run: |
-          curl https://get.gptscript.ai/releases/default_linux_amd64_v1/gptscript -o gptscript
-          chmod +x gptscript
+          curl https://get.gptscript.ai/releases/default_linux_amd64_v1/gptscript -o ./gptscriptexe
+          chmod +x ./gptscriptexe
       - name: Run Tests
         env:
-          GPTSCRIPT_BIN: ./gptscript
+          GPTSCRIPT_BIN: ./gptscriptexe
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: make test
 
