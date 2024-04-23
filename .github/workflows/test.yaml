@@ -18,14 +18,9 @@ on:
 
 jobs:
   check-perms:
+    if: ${{ !github.event.pull_request.merged }}
     runs-on: ubuntu-latest
     steps:
-      - uses: agilepathway/label-checker@v1.6.29
-        id: label_check
-        with:
-          any_of: run_ci
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          allow_failure: true
       - name: Get User Permission
         id: checkAccess
         uses: actions-cool/check-user-permission@v2
@@ -35,7 +30,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Check User Permission
-        if: steps.checkAccess.outputs.require-result == 'false' || steps.label_check.outputs.label_check != 'success'
+        if: steps.checkAccess.outputs.require-result == 'false'
         run: |
           echo "${{ github.triggering_actor }} does not have permissions on this repo."
           echo "Current permission level is ${{ steps.checkAccess.outputs.user-permission }}"
@@ -49,7 +44,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          ref: ${{  github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || '' }}
       - uses: actions/setup-go@v5
         with:
           cache: false
@@ -73,7 +68,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-          ref: ${{  github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || '' }}
       - uses: actions/setup-go@v5
         with:
           cache: false
