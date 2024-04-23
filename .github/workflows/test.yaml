@@ -6,9 +6,6 @@ on:
     paths-ignore:
       - README.md
   pull_request_target:
-    types:
-      - labeled
-      - unlabeled
     branches:
       - main
     paths-ignore:
