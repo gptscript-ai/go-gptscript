@@ -11,10 +11,10 @@ import (
 
 // Opts represents options for the gptscript tool or file.
 type Opts struct {
-	DisableCache bool
-	CacheDir     string
-	Quiet        bool
-	Chdir        string
+	DisableCache bool   `json:"disableCache"`
+	CacheDir     string `json:"cacheDir"`
+	Quiet        bool   `json:"quiet"`
+	Chdir        string `json:"chdir"`
 }
 
 func (o Opts) toArgs() []string {
