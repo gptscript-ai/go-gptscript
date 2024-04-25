@@ -105,7 +105,7 @@ import (
 
 func execFile(ctx context.Context) (string, error) {
 	opts := gogptscript.Opts{
-		Cache: &[]bool{false}[0],
+		DisableCache: &[]bool{true}[0],
 	}
 
 	return gogptscript.ExecFile(ctx, "./hello.gpt", "--input World", opts)
@@ -179,7 +179,7 @@ import (
 
 func streamExecTool(ctx context.Context) error {
 	opts := gogptscript.Opts{
-		Cache: &[]bool{false}[0],
+		DisableCache: &[]bool{true}[0],
 	}
 
 	stdOut, stdErr, wait := gogptscript.StreamExecFile(ctx, "./hello.gpt", "--input world", opts)
@@ -205,7 +205,7 @@ import (
 
 func streamExecTool(ctx context.Context) error {
 	opts := gogptscript.Opts{
-		Cache: &[]bool{false}[0],
+		DisableCache: &[]bool{true}[0],
 	}
 
 	stdOut, stdErr, events, wait := gogptscript.StreamExecFileWithEvents(ctx, "./hello.gpt", "--input world", opts)
