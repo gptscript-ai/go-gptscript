@@ -18,6 +18,17 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+func TestVersion(t *testing.T) {
+	out, err := Version(context.Background())
+	if err != nil {
+		t.Errorf("Error getting version: %v", err)
+	}
+
+	if !strings.HasPrefix(out, "gptscript version") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+}
+
 func TestListTools(t *testing.T) {
 	tools, err := ListTools(context.Background())
 	if err != nil {
@@ -101,7 +112,7 @@ func TestExecWithToolList(t *testing.T) {
 	tools := []fmt.Stringer{
 		&Tool{
 			Tools:        []string{"echo"},
-			Instructions: "echo hello times",
+			Instructions: "echo hello there",
 		},
 		&Tool{
 			Name:        "echo",
@@ -119,7 +130,7 @@ func TestExecWithToolList(t *testing.T) {
 		t.Errorf("Error executing tool: %v", err)
 	}
 
-	if !strings.Contains(out, "hello times") {
+	if !strings.Contains(out, "hello there") {
 		t.Errorf("Unexpected output: %s", out)
 	}
 }
