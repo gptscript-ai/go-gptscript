@@ -15,6 +15,7 @@ type Opts struct {
 	CacheDir     string `json:"cacheDir"`
 	Quiet        bool   `json:"quiet"`
 	Chdir        string `json:"chdir"`
+	SubTool      string `json:"subTool"`
 }
 
 func (o Opts) toArgs() []string {
@@ -27,6 +28,9 @@ func (o Opts) toArgs() []string {
 	}
 	if o.Chdir != "" {
 		args = append(args, "--chdir="+o.Chdir)
+	}
+	if o.SubTool != "" {
+		args = append(args, "--sub-tool="+o.SubTool)
 	}
 	return append(args, "--quiet="+fmt.Sprint(o.Quiet))
 }

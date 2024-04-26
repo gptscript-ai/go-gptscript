@@ -135,6 +135,42 @@ func TestExecWithToolList(t *testing.T) {
 	}
 }
 
+func TestExecWithToolListAndSubTool(t *testing.T) {
+	shebang := "#!/bin/bash"
+	if runtime.GOOS == "windows" {
+		shebang = "#!/usr/bin/env powershell.exe"
+	}
+	tools := []fmt.Stringer{
+		&Tool{
+			Tools:        []string{"echo"},
+			Instructions: "echo hello there",
+		},
+		&Tool{
+			Name:         "other",
+			Tools:        []string{"echo"},
+			Instructions: "echo hello somewhere else",
+		},
+		&Tool{
+			Name:        "echo",
+			Tools:       []string{"sys.exec"},
+			Description: "Echoes the input",
+			Args: map[string]string{
+				"input": "The string input to echo",
+			},
+			Instructions: shebang + "\n echo ${input}",
+		},
+	}
+
+	out, err := ExecTool(context.Background(), Opts{SubTool: "other"}, tools...)
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	if !strings.Contains(out, "hello somewhere else") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+}
+
 func TestStreamExec(t *testing.T) {
 	tool := &FreeForm{Content: "What is the capital of the united states?"}
 
