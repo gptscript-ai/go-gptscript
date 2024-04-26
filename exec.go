@@ -31,6 +31,12 @@ func (o Opts) toArgs() []string {
 	return append(args, "--quiet="+fmt.Sprint(o.Quiet))
 }
 
+// Version will return the output of `gptscript --version`
+func Version(ctx context.Context) (string, error) {
+	out, err := exec.CommandContext(ctx, getCommand(), "--version").CombinedOutput()
+	return string(out), err
+}
+
 // ListTools will list all the available tools.
 func ListTools(ctx context.Context) (string, error) {
 	out, err := exec.CommandContext(ctx, getCommand(), "--list-tools").CombinedOutput()
@@ -50,8 +56,36 @@ func ListModels(ctx context.Context) ([]string, error) {
 func ExecTool(ctx context.Context, opts Opts, tools ...fmt.Stringer) (string, error) {
 	c := exec.CommandContext(ctx, getCommand(), append(opts.toArgs(), "-")...)
 	c.Stdin = strings.NewReader(concatTools(tools))
-	out, err := c.CombinedOutput()
-	return string(out), err
+
+	stdout, err := c.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to get stdout pipe: %w", err)
+	}
+
+	stderr, err := c.StderrPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	if err = c.Start(); err != nil {
+		return "", fmt.Errorf("failed to start command: %w", err)
+	}
+
+	stdErr, err := io.ReadAll(stderr)
+	if err != nil {
+		return "", fmt.Errorf("failed to read stderr: %w", err)
+	}
+
+	stdOut, err := io.ReadAll(stdout)
+	if err != nil {
+		return "", fmt.Errorf("failed to read stdout: %w", err)
+	}
+
+	if err = c.Wait(); err != nil {
+		return "", fmt.Errorf("failed to wait for command, stderr: %s: %w", stdErr, err)
+	}
+
+	return string(stdOut), err
 }
 
 // StreamExecTool will execute a tool. The tool must be a fmt.Stringer, and the string should be a valid gptscript file.
@@ -115,8 +149,37 @@ func ExecFile(ctx context.Context, toolPath, input string, opts Opts) (string, e
 		args = append(args, input)
 	}
 
-	out, err := exec.CommandContext(ctx, getCommand(), args...).CombinedOutput()
-	return string(out), err
+	c := exec.CommandContext(ctx, getCommand(), args...)
+
+	stdout, err := c.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to get stdout pipe: %w", err)
+	}
+
+	stderr, err := c.StderrPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	if err = c.Start(); err != nil {
+		return "", fmt.Errorf("failed to start command: %w", err)
+	}
+
+	stdErr, err := io.ReadAll(stderr)
+	if err != nil {
+		return "", fmt.Errorf("failed to read stderr: %w", err)
+	}
+
+	stdOut, err := io.ReadAll(stdout)
+	if err != nil {
+		return "", fmt.Errorf("failed to read stdout: %w", err)
+	}
+
+	if err = c.Wait(); err != nil {
+		return "", fmt.Errorf("failed to wait for command, stderr: %s: %w", stdErr, err)
+	}
+
+	return string(stdOut), err
 }
 
 // StreamExecFile will execute the file at the given path with the given input.
