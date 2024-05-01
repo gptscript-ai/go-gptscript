@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/getkin/kin-openapi/openapi3"
 )
 
 func TestMain(m *testing.M) {
@@ -77,7 +79,7 @@ func TestExecFileChdir(t *testing.T) {
 }
 
 func TestExecComplexTool(t *testing.T) {
-	tool := &Tool{
+	tool := &SimpleTool{
 		JSONResponse: true,
 		Instructions: `
 Create three short graphic artist descriptions and their muses.
@@ -110,11 +112,11 @@ func TestExecWithToolList(t *testing.T) {
 		shebang = "#!/usr/bin/env powershell.exe"
 	}
 	tools := []fmt.Stringer{
-		&Tool{
+		&SimpleTool{
 			Tools:        []string{"echo"},
 			Instructions: "echo hello there",
 		},
-		&Tool{
+		&SimpleTool{
 			Name:        "echo",
 			Tools:       []string{"sys.exec"},
 			Description: "Echoes the input",
@@ -141,16 +143,16 @@ func TestExecWithToolListAndSubTool(t *testing.T) {
 		shebang = "#!/usr/bin/env powershell.exe"
 	}
 	tools := []fmt.Stringer{
-		&Tool{
+		&SimpleTool{
 			Tools:        []string{"echo"},
 			Instructions: "echo hello there",
 		},
-		&Tool{
+		&SimpleTool{
 			Name:         "other",
 			Tools:        []string{"echo"},
 			Instructions: "echo hello somewhere else",
 		},
-		&Tool{
+		&SimpleTool{
 			Name:        "echo",
 			Tools:       []string{"sys.exec"},
 			Description: "Echoes the input",
@@ -294,5 +296,207 @@ func TestStreamExecFileWithEvents(t *testing.T) {
 
 	if len(eventsOut) == 0 {
 		t.Error("No events output")
+	}
+}
+
+func TestParseSimpleFile(t *testing.T) {
+	tools, err := Parse(context.Background(), "./test/test.gpt", Opts{})
+	if err != nil {
+		t.Errorf("Error parsing file: %v", err)
+	}
+
+	if len(tools) != 1 {
+		t.Errorf("Unexpected number of tools: %d", len(tools))
+	}
+
+	if tools[0].ToolNode == nil {
+		t.Error("No tool node found")
+	}
+
+	if tools[0].ToolNode.Tool.Instructions != "Respond with a hello, in a random language. Also include the language in the response." {
+		t.Errorf("Unexpected instructions: %s", tools[0].ToolNode.Tool.Instructions)
+	}
+}
+
+func TestParseSimpleFileWithChdir(t *testing.T) {
+	tools, err := Parse(context.Background(), "./test.gpt", Opts{Chdir: "./test"})
+	if err != nil {
+		t.Errorf("Error parsing file: %v", err)
+	}
+
+	if len(tools) != 1 {
+		t.Errorf("Unexpected number of tools: %d", len(tools))
+	}
+
+	if tools[0].ToolNode == nil {
+		t.Error("No tool node found")
+	}
+
+	if tools[0].ToolNode.Tool.Instructions != "Respond with a hello, in a random language. Also include the language in the response." {
+		t.Errorf("Unexpected instructions: %s", tools[0].ToolNode.Tool.Instructions)
+	}
+}
+
+func TestParseTool(t *testing.T) {
+	tools, err := ParseTool(context.Background(), "echo hello")
+	if err != nil {
+		t.Errorf("Error parsing tool: %v", err)
+	}
+
+	if len(tools) != 1 {
+		t.Errorf("Unexpected number of tools: %d", len(tools))
+	}
+
+	if tools[0].ToolNode == nil {
+		t.Error("No tool node found")
+	}
+
+	if tools[0].ToolNode.Tool.Instructions != "echo hello" {
+		t.Errorf("Unexpected instructions: %s", tools[0].ToolNode.Tool.Instructions)
+	}
+}
+
+func TestParseToolWithTextNode(t *testing.T) {
+	tools, err := ParseTool(context.Background(), "echo hello\n---\n!markdown\nhello")
+	if err != nil {
+		t.Errorf("Error parsing tool: %v", err)
+	}
+
+	if len(tools) != 2 {
+		t.Errorf("Unexpected number of tools: %d", len(tools))
+	}
+
+	if tools[0].ToolNode == nil {
+		t.Error("No tool node found")
+	}
+
+	if tools[0].ToolNode.Tool.Instructions != "echo hello" {
+		t.Errorf("Unexpected instructions: %s", tools[0].ToolNode.Tool.Instructions)
+	}
+
+	if tools[1].TextNode == nil {
+		t.Error("No text node found")
+	}
+
+	if tools[1].TextNode.Text != "!markdown\nhello\n" {
+		t.Errorf("Unexpected text: %s", tools[1].TextNode.Text)
+	}
+}
+
+func TestFmt(t *testing.T) {
+	nodes := []Node{
+		{
+			ToolNode: &ToolNode{
+				Tool: Tool{
+					Parameters: Parameters{
+						Tools: []string{"echo"},
+					},
+					Instructions: "echo hello there",
+				},
+			},
+		},
+		{
+			ToolNode: &ToolNode{
+				Tool: Tool{
+					Parameters: Parameters{
+						Name: "echo",
+						Arguments: &openapi3.Schema{
+							Type: "object",
+							Properties: map[string]*openapi3.SchemaRef{
+								"input": {
+									Value: &openapi3.Schema{
+										Description: "The string input to echo",
+										Type:        "string",
+									},
+								},
+							},
+						},
+					},
+					Instructions: "#!/bin/bash\necho hello there",
+				},
+			},
+		},
+	}
+
+	out, err := Fmt(context.Background(), nodes)
+	if err != nil {
+		t.Errorf("Error formatting nodes: %v", err)
+	}
+
+	if out != `Tools: echo
+
+echo hello there
+
+---
+Name: echo
+Args: input: The string input to echo
+
+#!/bin/bash
+echo hello there
+` {
+		t.Errorf("Unexpected output: %s", out)
+	}
+}
+
+func TestFmtWithTextNode(t *testing.T) {
+	nodes := []Node{
+		{
+			ToolNode: &ToolNode{
+				Tool: Tool{
+					Parameters: Parameters{
+						Tools: []string{"echo"},
+					},
+					Instructions: "echo hello there",
+				},
+			},
+		},
+		{
+			TextNode: &TextNode{
+				Text: "!markdown\nWe now echo hello there\n",
+			},
+		},
+		{
+			ToolNode: &ToolNode{
+				Tool: Tool{
+					Parameters: Parameters{
+						Name: "echo",
+						Arguments: &openapi3.Schema{
+							Type: "object",
+							Properties: map[string]*openapi3.SchemaRef{
+								"input": {
+									Value: &openapi3.Schema{
+										Description: "The string input to echo",
+										Type:        "string",
+									},
+								},
+							},
+						},
+					},
+					Instructions: "#!/bin/bash\necho hello there",
+				},
+			},
+		},
+	}
+
+	out, err := Fmt(context.Background(), nodes)
+	if err != nil {
+		t.Errorf("Error formatting nodes: %v", err)
+	}
+
+	if out != `Tools: echo
+
+echo hello there
+
+---
+!markdown
+We now echo hello there
+---
+Name: echo
+Args: input: The string input to echo
+
+#!/bin/bash
+echo hello there
+` {
+		t.Errorf("Unexpected output: %s", out)
 	}
 }
