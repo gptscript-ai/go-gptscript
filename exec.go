@@ -1,7 +1,9 @@
 package gptscript
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -38,7 +40,7 @@ func (o Opts) toArgs() []string {
 // Version will return the output of `gptscript --version`
 func Version(ctx context.Context) (string, error) {
 	out, err := exec.CommandContext(ctx, getCommand(), "--version").CombinedOutput()
-	return string(out), err
+	return string(bytes.TrimSpace(out)), err
 }
 
 // ListTools will list all the available tools.
@@ -240,6 +242,57 @@ func StreamExecFileWithEvents(ctx context.Context, toolPath, input string, opts 
 	}
 
 	return stdout, stderr, eventsRead, wait
+}
+
+// Parse will parse the given file into an array of Nodes.
+func Parse(ctx context.Context, fileName string, opts Opts) ([]Node, error) {
+	output, err := exec.CommandContext(ctx, getCommand(), append(opts.toArgs(), "parse", fileName)...).CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	var doc Document
+	if err = json.Unmarshal(output, &doc); err != nil {
+		return nil, err
+	}
+
+	return doc.Nodes, nil
+}
+
+// ParseTool will parse the given string into a tool.
+func ParseTool(ctx context.Context, input string) ([]Node, error) {
+	c := exec.CommandContext(ctx, getCommand(), "parse", "-")
+	c.Stdin = strings.NewReader(input)
+
+	output, err := c.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+
+	var doc Document
+	if err = json.Unmarshal(output, &doc); err != nil {
+		return nil, err
+	}
+
+	return doc.Nodes, nil
+}
+
+// Fmt will format the given nodes into a string.
+func Fmt(ctx context.Context, nodes []Node) (string, error) {
+	b, err := json.Marshal(Document{Nodes: nodes})
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal nodes: %w", err)
+	}
+
+	c := exec.CommandContext(ctx, getCommand(), "fmt", "-")
+	c.Stdin = bytes.NewReader(b)
+
+	output, err := c.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	return string(output), nil
 }
 
 func concatTools(tools []fmt.Stringer) string {

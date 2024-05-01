@@ -3,10 +3,12 @@ package gptscript
 import (
 	"fmt"
 	"strings"
+
+	"github.com/getkin/kin-openapi/openapi3"
 )
 
-// Tool struct represents a tool with various configurations.
-type Tool struct {
+// SimpleTool struct represents a tool with various configurations.
+type SimpleTool struct {
 	Name           string
 	Description    string
 	Tools          []string
@@ -20,9 +22,9 @@ type Tool struct {
 	JSONResponse   bool
 }
 
-// NewTool is a constructor for Tool struct.
-func NewTool(name, description string, tools []string, maxTokens *int, model string, cache bool, temperature *float64, args map[string]string, internalPrompt bool, instructions string, jsonResponse bool) *Tool {
-	return &Tool{
+// NewSimpleTool is a constructor for SimpleTool struct.
+func NewSimpleTool(name, description string, tools []string, maxTokens *int, model string, cache bool, temperature *float64, args map[string]string, internalPrompt bool, instructions string, jsonResponse bool) *SimpleTool {
+	return &SimpleTool{
 		Name:           name,
 		Description:    description,
 		Tools:          tools,
@@ -37,8 +39,8 @@ func NewTool(name, description string, tools []string, maxTokens *int, model str
 	}
 }
 
-// String method returns the string representation of Tool.
-func (t *Tool) String() string {
+// String method returns the string representation of SimpleTool.
+func (t *SimpleTool) String() string {
 	var sb strings.Builder
 
 	if t.Name != "" {
@@ -95,7 +97,7 @@ func (f *FreeForm) String() string {
 	return f.Content
 }
 
-type Tools []Tool
+type Tools []SimpleTool
 
 func (t Tools) String() string {
 	resp := make([]string, 0, len(t))
@@ -103,4 +105,68 @@ func (t Tools) String() string {
 		resp = append(resp, tool.String())
 	}
 	return strings.Join(resp, "\n---\n")
+}
+
+type Document struct {
+	Nodes []Node `json:"nodes,omitempty"`
+}
+
+type Node struct {
+	TextNode *TextNode `json:"textNode,omitempty"`
+	ToolNode *ToolNode `json:"toolNode,omitempty"`
+}
+
+type TextNode struct {
+	Text string `json:"text,omitempty"`
+}
+
+type ToolNode struct {
+	Tool Tool `json:"tool,omitempty"`
+}
+
+type Tool struct {
+	Parameters   `json:",inline"`
+	Instructions string `json:"instructions,omitempty"`
+
+	ID          string            `json:"id,omitempty"`
+	ToolMapping map[string]string `json:"toolMapping,omitempty"`
+	LocalTools  map[string]string `json:"localTools,omitempty"`
+	Source      ToolSource        `json:"source,omitempty"`
+	WorkingDir  string            `json:"workingDir,omitempty"`
+}
+
+type ToolSource struct {
+	Location string `json:"location,omitempty"`
+	LineNo   int    `json:"lineNo,omitempty"`
+	Repo     *Repo  `json:"repo,omitempty"`
+}
+
+type Repo struct {
+	VCS      string
+	Root     string
+	Path     string
+	Name     string
+	Revision string
+}
+
+type Parameters struct {
+	Name            string           `json:"name,omitempty"`
+	Description     string           `json:"description,omitempty"`
+	MaxTokens       int              `json:"maxTokens,omitempty"`
+	ModelName       string           `json:"modelName,omitempty"`
+	ModelProvider   bool             `json:"modelProvider,omitempty"`
+	JSONResponse    bool             `json:"jsonResponse,omitempty"`
+	Chat            bool             `json:"chat,omitempty"`
+	Temperature     *float32         `json:"temperature,omitempty"`
+	Cache           *bool            `json:"cache,omitempty"`
+	InternalPrompt  *bool            `json:"internalPrompt"`
+	Arguments       *openapi3.Schema `json:"arguments,omitempty"`
+	Tools           []string         `json:"tools,omitempty"`
+	GlobalTools     []string         `json:"globalTools,omitempty"`
+	GlobalModelName string           `json:"globalModelName,omitempty"`
+	Context         []string         `json:"context,omitempty"`
+	ExportContext   []string         `json:"exportContext,omitempty"`
+	Export          []string         `json:"export,omitempty"`
+	Credentials     []string         `json:"credentials,omitempty"`
+	Blocking        bool             `json:"-"`
 }
