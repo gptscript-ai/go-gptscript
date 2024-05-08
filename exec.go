@@ -18,6 +18,7 @@ type Opts struct {
 	Quiet        bool   `json:"quiet"`
 	Chdir        string `json:"chdir"`
 	SubTool      string `json:"subTool"`
+	Workspace    string `json:"workspace"`
 }
 
 func (o Opts) toArgs() []string {
@@ -33,6 +34,9 @@ func (o Opts) toArgs() []string {
 	}
 	if o.SubTool != "" {
 		args = append(args, "--sub-tool="+o.SubTool)
+	}
+	if o.Workspace != "" {
+		args = append(args, "--workspace="+o.Workspace)
 	}
 	return append(args, "--quiet="+fmt.Sprint(o.Quiet))
 }

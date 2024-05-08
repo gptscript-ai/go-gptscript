@@ -500,3 +500,19 @@ echo hello there
 		t.Errorf("Unexpected output: %s", out)
 	}
 }
+
+func TestExecWithWorkspace(t *testing.T) {
+	tool := &SimpleTool{
+		Tools:        []string{"sys.workspace.ls", "sys.workspace.write"},
+		Instructions: "Write a file named 'hello.txt' to the workspace with the content 'Hello!' and list the contents of the workspace.",
+	}
+
+	out, err := ExecTool(context.Background(), Opts{Workspace: "./workspace"}, tool)
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	if !strings.Contains(out, "hello.txt") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+}
