@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -312,7 +314,16 @@ func concatTools(tools []fmt.Stringer) string {
 
 func getCommand() string {
 	if gptScriptBin := os.Getenv("GPTSCRIPT_BIN"); gptScriptBin != "" {
-		return gptScriptBin
+		if filepath.IsAbs(gptScriptBin) {
+			return gptScriptBin
+		}
+		cwd, err := os.Getwd()
+		if err != nil {
+			slog.Warn("failed to get cwd", "err", err.Error())
+			return gptScriptBin
+		}
+
+		return filepath.Join(cwd, gptScriptBin)
 	}
 
 	return "gptscript"
