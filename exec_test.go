@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -514,5 +515,46 @@ func TestExecWithWorkspace(t *testing.T) {
 
 	if !strings.Contains(out, "hello.txt") {
 		t.Errorf("Unexpected output: %s", out)
+	}
+}
+
+func TestGetCommand(t *testing.T) {
+	currentEnvVar := os.Getenv("GPTSCRIPT_BIN")
+	t.Cleanup(func() {
+		_ = os.Setenv("GPTSCRIPT_BIN", currentEnvVar)
+	})
+
+	tests := []struct {
+		name   string
+		envVar string
+		want   string
+	}{
+		{
+			name: "no env var set",
+			want: "gptscript",
+		},
+		{
+			name:   "env var set to absolute path",
+			envVar: "/usr/local/bin/gptscript",
+			want:   "/usr/local/bin/gptscript",
+		},
+		{
+			name:   "env var set to relative path",
+			envVar: "../bin/gptscript",
+			want:   "../bin/gptscript",
+		},
+		{
+			name:   "env var set to relative 'to me' path",
+			envVar: "<me>/../bin/gptscript",
+			want:   filepath.Join(filepath.Dir(os.Args[0]), "../bin/gptscript"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_ = os.Setenv("GPTSCRIPT_BIN", tt.envVar)
+			if got := getCommand(); got != tt.want {
+				t.Errorf("getCommand() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

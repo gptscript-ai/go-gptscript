@@ -12,6 +12,8 @@ import (
 	"strings"
 )
 
+const relativeToBinaryPath = "<me>"
+
 // Opts represents options for the gptscript tool or file.
 type Opts struct {
 	DisableCache bool   `json:"disableCache"`
@@ -313,11 +315,11 @@ func concatTools(tools []fmt.Stringer) string {
 
 func getCommand() string {
 	if gptScriptBin := os.Getenv("GPTSCRIPT_BIN"); gptScriptBin != "" {
-		if filepath.IsAbs(gptScriptBin) || len(os.Args) == 0 {
+		if !strings.HasPrefix(gptScriptBin, relativeToBinaryPath) || len(os.Args) == 0 {
 			return gptScriptBin
 		}
 
-		return filepath.Join(filepath.Dir(os.Args[0]), gptScriptBin)
+		return filepath.Join(filepath.Dir(os.Args[0]), strings.TrimPrefix(gptScriptBin, relativeToBinaryPath))
 	}
 
 	return "gptscript"
