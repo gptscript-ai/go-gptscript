@@ -16,6 +16,14 @@ To use the module, you need to first set the OPENAI_API_KEY environment variable
 
 Additionally, you need the `gptscript` binary. You can install it on your system using the [installation instructions](https://github.com/gptscript-ai/gptscript?tab=readme-ov-file#1-install-the-latest-release). The binary can be on the PATH, or the `GPTSCRIPT_BIN` environment variable can be used to specify its location.
 
+## Client
+
+There are currently a couple "global" options, and the client helps to manage those. A client without any options is
+likely what you want. However, here are the current global options:
+
+- `gptscriptURL`: The URL (including `http(s)://) of an "SDK server" to use instead of the fork/exec model.
+- `gptscriptBin`: The path to a `gptscript` binary to use instead of the bundled one.
+
 ## Options
 
 These are optional options that can be passed to the various `exec` functions.
@@ -26,6 +34,10 @@ None of the options is required, and the defaults will reduce the number of call
 - `quiet`: No output logging
 - `chdir`: Change current working directory
 - `subTool`: Use tool of this name, not the first tool
+- `input`: Input arguments for the tool run
+- `workspace`: Directory to use for the workspace, if specified it will not be deleted on exit
+- `inlcudeEvents`: Whether to include the streaming of events. Default (false). Note that if this is true, you must stream the events. See below for details.
+- `chatState`: The chat state to continue, or null to start a new chat and return the state
 
 ## Functions
 
@@ -45,7 +57,9 @@ import (
 )
 
 func listTools(ctx context.Context) (string, error) {
-	return gogptscript.ListTools(ctx)
+	client := &gogptscript.Client{}
+	client.Complete()
+	return client.ListTools(ctx)
 }
 ```
 
@@ -65,13 +79,78 @@ import (
 )
 
 func listModels(ctx context.Context) ([]string, error) {
-	return gogptscript.ListModels(ctx)
+	client := &gogptscript.Client{}
+	client.Complete()
+	return client.ListModels(ctx)
 }
 ```
 
-### ExecTool
+### Parse
 
-Executes a prompt with optional arguments.
+Parse file into a Tool data structure
+
+```go
+package main
+
+import (
+	"context"
+
+	gogptscript "github.com/gptscript-ai/go-gptscript"
+)
+
+func parse(ctx context.Context, fileName string) ([]gogptscript.Node, error) {
+	client := &gogptscript.Client{}
+	client.Complete()
+	
+	return client.Parse(ctx, fileName)
+}
+```
+
+### ParseTool
+
+Parse contents that represents a GPTScript file into a data structure.
+
+```go
+package main
+
+import (
+	"context"
+
+	gogptscript "github.com/gptscript-ai/go-gptscript"
+)
+
+func parseTool(ctx context.Context, contents string) ([]gogptscript.Node, error) {
+	client := &gogptscript.Client{}
+	client.Complete()
+	
+	return client.ParseTool(ctx, contents)
+}
+```
+
+### Fmt
+
+Parse convert a tool data structure into a GPTScript file.
+
+```go
+package main
+
+import (
+	"context"
+
+	gogptscript "github.com/gptscript-ai/go-gptscript"
+)
+
+func parse(ctx context.Context, nodes []gogptscript.node) (string, error) {
+	client := &gogptscript.Client{}
+	client.Complete()
+	
+	return client.Fmt(ctx, nodes)
+}
+```
+
+### Evaluate
+
+Executes a tool with optional arguments.
 
 ```go
 package main
@@ -83,15 +162,23 @@ import (
 )
 
 func runTool(ctx context.Context) (string, error) {
-	t := gogptscript.Tool{
+	t := gogptscript.ToolDef{
 		Instructions: "who was the president of the united states in 1928?",
 	}
 
-	return gogptscript.ExecTool(ctx, gogptscript.Opts{}, t)
+	client := &gogptscript.Client{}
+	client.Complete()
+
+	run, err := client.Evaluate(ctx, gogptscript.Opts{}, t)
+	if err != nil {
+		return "", err
+	}
+
+	return run.Text()
 }
 ```
 
-### ExecFile
+### Run
 
 Executes a GPT script file with optional input and arguments. The script is relative to the callers source directory.
 
@@ -104,70 +191,27 @@ import (
 	gogptscript "github.com/gptscript-ai/go-gptscript"
 )
 
-func execFile(ctx context.Context) (string, error) {
+func runFile(ctx context.Context) (string, error) {
 	opts := gogptscript.Opts{
 		DisableCache: &[]bool{true}[0],
+		Input: "--input hello",
 	}
 
-	return gogptscript.ExecFile(ctx, "./hello.gpt", "--input World", opts)
+	client := &gogptscript.Client{}
+	client.Complete()
+
+	run, err := client.Run(ctx, "./hello.gpt",  opts)
+	if err != nil {
+		return "", err
+	}
+
+	return run.Text()
 }
 ```
 
-### StreamExecTool
+### Streaming events
 
-Executes a gptscript with optional input and arguments, and returns the output streams.
-
-```go
-package main
-
-import (
-	"context"
-
-	gogptscript "github.com/gptscript-ai/go-gptscript"
-)
-
-func streamExecTool(ctx context.Context) error {
-	t := gogptscript.Tool{
-		Instructions: "who was the president of the united states in 1928?",
-	}
-
-	stdOut, stdErr, wait := gogptscript.StreamExecTool(ctx, gogptscript.Opts{}, t)
-
-	// Read from stdOut and stdErr before call wait()
-
-	return wait()
-}
-```
-
-### StreamExecToolWithEvents
-
-Executes a gptscript with optional input and arguments, and returns the stdout, stderr, and gptscript events streams.
-
-```go
-package main
-
-import (
-	"context"
-
-	gogptscript "github.com/gptscript-ai/go-gptscript"
-)
-
-func streamExecTool(ctx context.Context) error {
-	t := gogptscript.Tool{
-		Instructions: "who was the president of the united states in 1928?",
-	}
-
-	stdOut, stdErr, events, wait := gogptscript.StreamExecToolWithEvents(ctx, gogptscript.Opts{}, t)
-
-	// Read from stdOut and stdErr before call wait()
-
-	return wait()
-}
-```
-
-### streamExecFile
-
-The script is relative to the callers source directory.
+In order to stream events, you must set `IncludeEvents` option to `true`. You if you don't set this and try to stream events, then it will succeed, but you will not get any events. More importantly, if you set `IncludeEvents` to `true`, you must stream the events for the script to complete.
 
 ```go
 package main
@@ -180,40 +224,26 @@ import (
 
 func streamExecTool(ctx context.Context) error {
 	opts := gogptscript.Opts{
-		DisableCache: &[]bool{true}[0],
+		DisableCache:  &[]bool{true}[0],
+		IncludeEvents: true,
+		Input:         "--input world",
 	}
 
-	stdOut, stdErr, wait := gogptscript.StreamExecFile(ctx, "./hello.gpt", "--input world", opts)
+	client := &gogptscript.Client{}
+	client.Complete()
 
-	// Read from stdOut and stdErr before call wait()
-
-	return wait()
-}
-```
-
-### streamExecFileWithEvents
-
-The script is relative to the callers source directory.
-
-```go
-package main
-
-import (
-	"context"
-
-	gogptscript "github.com/gptscript-ai/go-gptscript"
-)
-
-func streamExecTool(ctx context.Context) error {
-	opts := gogptscript.Opts{
-		DisableCache: &[]bool{true}[0],
+	run, err := client.Run(ctx, "./hello.gpt", opts)
+	if err != nil {
+		return err
 	}
 
-	stdOut, stdErr, events, wait := gogptscript.StreamExecFileWithEvents(ctx, "./hello.gpt", "--input world", opts)
+	for event := range run.Events() {
+		// Process event...
+	}
 
-	// Read from stdOut and stdErr before call wait()
-
-	return wait()
+	// Wait for the output to ensure the script completes successfully.
+	_, err = run.Text()
+	return err
 }
 ```
 
@@ -234,12 +264,6 @@ func streamExecTool(ctx context.Context) error {
 | internalPrompt    | boolean  | `false`        | An internal prompt used by the tool, if any.                                                  |
 | instructions      | string         | `""`        | Instructions on how to use the tool.                                                          |
 | jsonResponse      | boolean        | `false`     | Whether the tool returns a JSON response instead of plain text. You must include the word 'json' in the body of the prompt                               |
-
-### FreeForm Parameters
-
-| Argument  | Type   | Default | Description                           |
-|-----------|--------|---------|---------------------------------------|
-| content   | string | `""`    | This is a multi-line string that contains the  entire contents of a valid gptscript file|
 
 ## License
 
