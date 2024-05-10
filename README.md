@@ -14,7 +14,7 @@ go get github.com/gptscript-ai/go-gptscript
 
 To use the module, you need to first set the OPENAI_API_KEY environment variable to your OpenAI API key.
 
-Additionally, you need the `gptscript` binary. You can install it on your system using the [installation instructions](https://github.com/gptscript-ai/gptscript?tab=readme-ov-file#1-install-the-latest-release).
+Additionally, you need the `gptscript` binary. You can install it on your system using the [installation instructions](https://github.com/gptscript-ai/gptscript?tab=readme-ov-file#1-install-the-latest-release). The binary can be on the PATH, or the `GPTSCRIPT_BIN` environment variable can be used to specify its location.
 
 ## Options
 

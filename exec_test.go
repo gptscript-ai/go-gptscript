@@ -518,42 +518,58 @@ func TestExecWithWorkspace(t *testing.T) {
 	}
 }
 
-func TestGetCommand(t *testing.T) {
-	currentEnvVar := os.Getenv("GPTSCRIPT_BIN")
-	t.Cleanup(func() {
-		_ = os.Setenv("GPTSCRIPT_BIN", currentEnvVar)
-	})
-
+func TestDetermineProperCommand(t *testing.T) {
 	tests := []struct {
-		name   string
-		envVar string
-		want   string
+		name     string
+		dir, bin string
+		want     string
 	}{
 		{
-			name: "no env var set",
+			name: "no dir",
+			bin:  "gptscript",
 			want: "gptscript",
 		},
 		{
-			name:   "env var set to absolute path",
-			envVar: "/usr/local/bin/gptscript",
-			want:   "/usr/local/bin/gptscript",
+			name: "bin set to absolute path",
+			bin:  "/usr/local/bin/gptscript",
+			dir:  "/usr/local",
+			want: "/usr/local/bin/gptscript",
 		},
 		{
-			name:   "env var set to relative path",
-			envVar: "../bin/gptscript",
-			want:   "../bin/gptscript",
+			name: "bin set to relative path",
+			bin:  "../bin/gptscript",
+			dir:  "/usr/local",
+			want: "../bin/gptscript",
 		},
 		{
-			name:   "env var set to relative 'to me' path",
-			envVar: "<me>/../bin/gptscript",
-			want:   filepath.Join(filepath.Dir(os.Args[0]), "../bin/gptscript"),
+			name: "bin set to relative 'to me' path with os.Args[0]",
+			bin:  "<me>/../bin/gptscript",
+			dir:  filepath.Dir(os.Args[0]),
+			want: filepath.Join(filepath.Dir(os.Args[0]), "../bin/gptscript"),
+		},
+		{
+			name: "env var set to relative 'to me' path with extra and dir is current",
+			bin:  "<me>/../bin/gptscript",
+			dir:  "./",
+			want: "./../bin/gptscript",
+		},
+		{
+			name: "env var set to relative 'to me' path and dir is current",
+			bin:  "<me>/gptscript",
+			dir:  "./",
+			want: "./gptscript",
+		},
+		{
+			name: "env var set to relative 'to me' path with extra and dir is current",
+			bin:  "<me>/../bin/gptscript",
+			dir:  "./",
+			want: "./../bin/gptscript",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_ = os.Setenv("GPTSCRIPT_BIN", tt.envVar)
-			if got := getCommand(); got != tt.want {
-				t.Errorf("getCommand() = %v, want %v", got, tt.want)
+			if got := determineProperCommand(tt.dir, tt.bin); got != tt.want {
+				t.Errorf("determineProperCommand() = %v, want %v", got, tt.want)
 			}
 		})
 	}

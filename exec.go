@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -315,14 +316,28 @@ func concatTools(tools []fmt.Stringer) string {
 
 func getCommand() string {
 	if gptScriptBin := os.Getenv("GPTSCRIPT_BIN"); gptScriptBin != "" {
-		if !strings.HasPrefix(gptScriptBin, relativeToBinaryPath) || len(os.Args) == 0 {
+		if len(os.Args) == 0 {
 			return gptScriptBin
 		}
-
-		return filepath.Join(filepath.Dir(os.Args[0]), strings.TrimPrefix(gptScriptBin, relativeToBinaryPath))
+		return determineProperCommand(filepath.Dir(os.Args[0]), gptScriptBin)
 	}
 
 	return "gptscript"
+}
+
+// determineProperCommand is for testing purposes. Users should use getCommand instead.
+func determineProperCommand(dir, bin string) string {
+	if !strings.HasPrefix(bin, relativeToBinaryPath) {
+		return bin
+	}
+
+	bin = filepath.Join(dir, strings.TrimPrefix(bin, relativeToBinaryPath))
+	if !filepath.IsAbs(bin) {
+		bin = "." + string(os.PathSeparator) + bin
+	}
+
+	slog.Debug("Using gptscript binary: " + bin)
+	return bin
 }
 
 func setupForkCommand(ctx context.Context, input string, args []string) (*exec.Cmd, io.Reader, io.Reader, error) {
