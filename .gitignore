@@ -24,5 +24,6 @@ go.work
 .idea/
 .vscode/
 
+workspace/
 bin/
 workspace/

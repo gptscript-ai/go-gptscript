@@ -7,40 +7,31 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-// SimpleTool struct represents a tool with various configurations.
-type SimpleTool struct {
-	Name           string
-	Description    string
-	Tools          []string
-	MaxTokens      *int // Using a pointer to represent optional int
-	Model          string
-	Cache          bool
-	Temperature    *float64 // Using a pointer to represent optional float64
-	Args           map[string]string
-	InternalPrompt bool
-	Instructions   string
-	JSONResponse   bool
+// ToolDef struct represents a tool with various configurations.
+type ToolDef struct {
+	Name            string            `json:"name,omitempty"`
+	Description     string            `json:"description,omitempty"`
+	MaxTokens       int               `json:"maxTokens,omitempty"`
+	ModelName       string            `json:"modelName,omitempty"`
+	ModelProvider   bool              `json:"modelProvider,omitempty"`
+	JSONResponse    bool              `json:"jsonResponse,omitempty"`
+	Chat            bool              `json:"chat,omitempty"`
+	Temperature     *float32          `json:"temperature,omitempty"`
+	Cache           *bool             `json:"cache,omitempty"`
+	InternalPrompt  *bool             `json:"internalPrompt"`
+	Args            map[string]string `json:"args,omitempty"`
+	Tools           []string          `json:"tools,omitempty"`
+	GlobalTools     []string          `json:"globalTools,omitempty"`
+	GlobalModelName string            `json:"globalModelName,omitempty"`
+	Context         []string          `json:"context,omitempty"`
+	ExportContext   []string          `json:"exportContext,omitempty"`
+	Export          []string          `json:"export,omitempty"`
+	Credentials     []string          `json:"credentials,omitempty"`
+	Instructions    string            `json:"instructions,omitempty"`
 }
 
-// NewSimpleTool is a constructor for SimpleTool struct.
-func NewSimpleTool(name, description string, tools []string, maxTokens *int, model string, cache bool, temperature *float64, args map[string]string, internalPrompt bool, instructions string, jsonResponse bool) *SimpleTool {
-	return &SimpleTool{
-		Name:           name,
-		Description:    description,
-		Tools:          tools,
-		MaxTokens:      maxTokens,
-		Model:          model,
-		Cache:          cache,
-		Temperature:    temperature,
-		Args:           args,
-		InternalPrompt: internalPrompt,
-		Instructions:   instructions,
-		JSONResponse:   jsonResponse,
-	}
-}
-
-// String method returns the string representation of SimpleTool.
-func (t *SimpleTool) String() string {
+// String method returns the string representation of ToolDef.
+func (t *ToolDef) String() string {
 	var sb strings.Builder
 
 	if t.Name != "" {
@@ -52,13 +43,13 @@ func (t *SimpleTool) String() string {
 	if len(t.Tools) > 0 {
 		sb.WriteString(fmt.Sprintf("Tools: %s\n", strings.Join(t.Tools, ", ")))
 	}
-	if t.MaxTokens != nil {
-		sb.WriteString(fmt.Sprintf("Max tokens: %d\n", *t.MaxTokens))
+	if t.MaxTokens != 0 {
+		sb.WriteString(fmt.Sprintf("Max tokens: %d\n", t.MaxTokens))
 	}
-	if t.Model != "" {
-		sb.WriteString(fmt.Sprintf("Model: %s\n", t.Model))
+	if t.ModelName != "" {
+		sb.WriteString(fmt.Sprintf("Model: %s\n", t.ModelName))
 	}
-	if !t.Cache {
+	if t.Cache != nil && !*t.Cache {
 		sb.WriteString("Cache: false\n")
 	}
 	if t.Temperature != nil {
@@ -72,7 +63,10 @@ func (t *SimpleTool) String() string {
 			sb.WriteString(fmt.Sprintf("Args: %s: %s\n", arg, desc))
 		}
 	}
-	if t.InternalPrompt {
+	if t.Chat {
+		sb.WriteString("Chat: true\n")
+	}
+	if t.InternalPrompt != nil && *t.InternalPrompt {
 		sb.WriteString("Internal prompt: true\n")
 	}
 	if t.Instructions != "" {
@@ -82,24 +76,9 @@ func (t *SimpleTool) String() string {
 	return sb.String()
 }
 
-// FreeForm struct represents free-form content.
-type FreeForm struct {
-	Content string
-}
+type ToolDefs []ToolDef
 
-// NewFreeForm is a constructor for FreeForm struct.
-func NewFreeForm(content string) *FreeForm {
-	return &FreeForm{Content: content}
-}
-
-// String method returns the string representation of FreeForm.
-func (f *FreeForm) String() string {
-	return f.Content
-}
-
-type Tools []SimpleTool
-
-func (t Tools) String() string {
+func (t ToolDefs) String() string {
 	resp := make([]string, 0, len(t))
 	for _, tool := range t {
 		resp = append(resp, tool.String())
@@ -125,10 +104,9 @@ type ToolNode struct {
 }
 
 type Tool struct {
-	Parameters   `json:",inline"`
-	Instructions string `json:"instructions,omitempty"`
-
+	ToolDef     `json:",inline"`
 	ID          string            `json:"id,omitempty"`
+	Arguments   *openapi3.Schema  `json:"arguments,omitempty"`
 	ToolMapping map[string]string `json:"toolMapping,omitempty"`
 	LocalTools  map[string]string `json:"localTools,omitempty"`
 	Source      ToolSource        `json:"source,omitempty"`
@@ -149,24 +127,13 @@ type Repo struct {
 	Revision string
 }
 
-type Parameters struct {
-	Name            string           `json:"name,omitempty"`
-	Description     string           `json:"description,omitempty"`
-	MaxTokens       int              `json:"maxTokens,omitempty"`
-	ModelName       string           `json:"modelName,omitempty"`
-	ModelProvider   bool             `json:"modelProvider,omitempty"`
-	JSONResponse    bool             `json:"jsonResponse,omitempty"`
-	Chat            bool             `json:"chat,omitempty"`
-	Temperature     *float32         `json:"temperature,omitempty"`
-	Cache           *bool            `json:"cache,omitempty"`
-	InternalPrompt  *bool            `json:"internalPrompt"`
-	Arguments       *openapi3.Schema `json:"arguments,omitempty"`
-	Tools           []string         `json:"tools,omitempty"`
-	GlobalTools     []string         `json:"globalTools,omitempty"`
-	GlobalModelName string           `json:"globalModelName,omitempty"`
-	Context         []string         `json:"context,omitempty"`
-	ExportContext   []string         `json:"exportContext,omitempty"`
-	Export          []string         `json:"export,omitempty"`
-	Credentials     []string         `json:"credentials,omitempty"`
-	Blocking        bool             `json:"-"`
+func concatTools(tools []fmt.Stringer) string {
+	var sb strings.Builder
+	for i, tool := range tools {
+		sb.WriteString(tool.String())
+		if i < len(tools)-1 {
+			sb.WriteString("\n---\n")
+		}
+	}
+	return sb.String()
 }
