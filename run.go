@@ -80,7 +80,7 @@ func (r *Run) Close() error {
 	}
 
 	// If the command has already exited, then nothing to do.
-	if r.cmd.ProcessState == nil {
+	if r.cmd.ProcessState != nil {
 		return nil
 	}
 
@@ -97,6 +97,11 @@ func (r *Run) RawOutput() (map[string]any, error) {
 		return nil, err
 	}
 	return r.rawOutput, nil
+}
+
+// ChatState returns the current chat state of the Run.
+func (r *Run) ChatState() string {
+	return r.chatState
 }
 
 // NextChat will pass input and create the next run in a chat.
