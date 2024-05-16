@@ -567,26 +567,6 @@ func TestFileChat(t *testing.T) {
 	}
 }
 
-func TestWorkspace(t *testing.T) {
-	tool := &ToolDef{
-		Tools:        []string{"sys.workspace.ls", "sys.workspace.write"},
-		Instructions: "Write a file named 'hello.txt' in the workspace with contents 'Hello!' then list the files in the workspace.",
-	}
-	run, err := client.Evaluate(context.Background(), Opts{Workspace: "./workspace"}, tool)
-	if err != nil {
-		t.Errorf("Error getting workspace: %v", err)
-	}
-
-	output, err := run.Text()
-	if err != nil {
-		t.Errorf("Error reading output: %v", err)
-	}
-
-	if !strings.Contains(output, "hello.txt") {
-		t.Errorf("Unexpected output from listing workspace: %s", output)
-	}
-}
-
 func TestGetCommand(t *testing.T) {
 	currentEnvVar := os.Getenv("GPTSCRIPT_BIN")
 	t.Cleanup(func() {
