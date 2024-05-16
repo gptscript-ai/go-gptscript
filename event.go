@@ -58,10 +58,12 @@ const (
 type EventType string
 
 const (
+	EventTypeRunStart     EventType = "runStart"
 	EventTypeCallStart    EventType = "callStart"
 	EventTypeCallContinue EventType = "callContinue"
 	EventTypeCallSubCalls EventType = "callSubCalls"
 	EventTypeCallProgress EventType = "callProgress"
 	EventTypeChat         EventType = "callChat"
 	EventTypeCallFinish   EventType = "callFinish"
+	EventTypeRunFinish    EventType = "runFinish"
 )
