@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 		panic("OPENAI_API_KEY or GPTSCRIPT_URL environment variable must be set")
 	}
 
-	client = &Client{GPTScriptURL: os.Getenv("GPTSCRIPT_URL"), GPTScriptBin: os.Getenv("GPTSCRIPT_BIN")}
+	client = NewClient(ClientOpts{GPTScriptURL: os.Getenv("GPTSCRIPT_URL"), GPTScriptBin: os.Getenv("GPTSCRIPT_BIN")})
 	os.Exit(m.Run())
 }
 

@@ -12,21 +12,31 @@ import (
 
 const relativeToBinaryPath = "<me>"
 
-type Client struct {
+type ClientOpts struct {
 	GPTScriptURL string
 	GPTScriptBin string
 }
 
-func (c *Client) Complete() {
-	if c.GPTScriptBin == "" {
-		c.GPTScriptBin = getCommand()
+type Client struct {
+	opts ClientOpts
+}
+
+func NewClient(opts ClientOpts) *Client {
+	c := &Client{opts: opts}
+	c.complete()
+	return c
+}
+
+func (c *Client) complete() {
+	if c.opts.GPTScriptBin == "" {
+		c.opts.GPTScriptBin = getCommand()
 	}
 }
 
 func (c *Client) Evaluate(ctx context.Context, opts Opts, tools ...fmt.Stringer) (*Run, error) {
 	return (&Run{
-		url:         c.GPTScriptURL,
-		binPath:     c.GPTScriptBin,
+		url:         c.opts.GPTScriptURL,
+		binPath:     c.opts.GPTScriptBin,
 		requestPath: "evaluate",
 		state:       Creating,
 		opts:        opts,
@@ -37,8 +47,8 @@ func (c *Client) Evaluate(ctx context.Context, opts Opts, tools ...fmt.Stringer)
 
 func (c *Client) Run(ctx context.Context, toolPath string, opts Opts) (*Run, error) {
 	return (&Run{
-		url:         c.GPTScriptURL,
-		binPath:     c.GPTScriptBin,
+		url:         c.opts.GPTScriptURL,
+		binPath:     c.opts.GPTScriptBin,
 		requestPath: "run",
 		state:       Creating,
 		opts:        opts,
@@ -86,8 +96,8 @@ func (c *Client) Fmt(ctx context.Context, nodes []Node) (string, error) {
 
 	run := &runSubCommand{
 		Run: Run{
-			url:         c.GPTScriptURL,
-			binPath:     c.GPTScriptBin,
+			url:         c.opts.GPTScriptURL,
+			binPath:     c.opts.GPTScriptBin,
 			requestPath: "fmt",
 			state:       Creating,
 			toolPath:    "",
@@ -148,8 +158,8 @@ func (c *Client) ListModels(ctx context.Context) ([]string, error) {
 func (c *Client) runBasicCommand(ctx context.Context, command, requestPath, toolPath, content string) (string, error) {
 	run := &runSubCommand{
 		Run: Run{
-			url:         c.GPTScriptURL,
-			binPath:     c.GPTScriptBin,
+			url:         c.opts.GPTScriptURL,
+			binPath:     c.opts.GPTScriptBin,
 			requestPath: requestPath,
 			state:       Creating,
 			toolPath:    toolPath,
