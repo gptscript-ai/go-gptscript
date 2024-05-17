@@ -17,7 +17,7 @@ import (
 	"sync"
 )
 
-var abortRunError = errors.New("run aborted")
+var errAbortRun = errors.New("run aborted")
 
 type Run struct {
 	url, binPath, requestPath, toolPath, content string
@@ -86,12 +86,12 @@ func (r *Run) Close() error {
 		return fmt.Errorf("run not started")
 	}
 
-	r.cancel(abortRunError)
+	r.cancel(errAbortRun)
 	if r.wait == nil {
 		return nil
 	}
 
-	if err := r.wait(); !errors.Is(err, abortRunError) && !errors.Is(err, context.Canceled) && !errors.As(err, new(*exec.ExitError)) {
+	if err := r.wait(); !errors.Is(err, errAbortRun) && !errors.Is(err, context.Canceled) && !errors.As(err, new(*exec.ExitError)) {
 		return err
 	}
 
