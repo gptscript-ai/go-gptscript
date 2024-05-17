@@ -57,6 +57,30 @@ func TestListModels(t *testing.T) {
 	}
 }
 
+func TestAbortRun(t *testing.T) {
+	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
+
+	run, err := client.Evaluate(context.Background(), Opts{DisableCache: true, IncludeEvents: true}, tool)
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	// Abort the run after the first event.
+	<-run.Events()
+
+	if err := run.Close(); err != nil {
+		t.Errorf("Error aborting run: %v", err)
+	}
+
+	if run.State() != Error {
+		t.Errorf("Unexpected run state: %s", run.State())
+	}
+
+	if run.Err() == nil {
+		t.Error("Expected error but got nil")
+	}
+}
+
 func TestSimpleEvaluate(t *testing.T) {
 	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
 

@@ -17,12 +17,14 @@ import (
 	"sync"
 )
 
+var abortRunError = errors.New("run aborted")
+
 type Run struct {
 	url, binPath, requestPath, toolPath, content string
 	opts                                         Opts
 	state                                        RunState
 	chatState                                    string
-	cmd                                          *exec.Cmd
+	cancel                                       context.CancelCauseFunc
 	err                                          error
 	stdout, stderr                               io.Reader
 	wait                                         func() error
@@ -61,6 +63,11 @@ func (r *Run) State() RunState {
 	return r.state
 }
 
+// Err returns the error that caused the gptscript to fail, if any.
+func (r *Run) Err() error {
+	return r.err
+}
+
 // ErrorOutput returns the stderr output of the gptscript.
 // Should only be called after Bytes or Text has returned an error.
 func (r *Run) ErrorOutput() string {
@@ -75,20 +82,20 @@ func (r *Run) Events() <-chan Event {
 // Close will stop the gptscript run, if it is running.
 func (r *Run) Close() error {
 	// If the command was not started, then report error.
-	if r.cmd == nil || r.cmd.Process == nil {
+	if r.cancel == nil {
 		return fmt.Errorf("run not started")
 	}
 
-	// If the command has already exited, then nothing to do.
-	if r.cmd.ProcessState != nil {
+	r.cancel(abortRunError)
+	if r.wait == nil {
 		return nil
 	}
 
-	if err := r.cmd.Process.Signal(os.Kill); err != nil {
+	if err := r.wait(); !errors.Is(err, abortRunError) && !errors.Is(err, context.Canceled) && !errors.As(err, new(*exec.ExitError)) {
 		return err
 	}
 
-	return r.wait()
+	return nil
 }
 
 // RawOutput returns the raw output of the gptscript. Most users should use Text or Bytes instead.
@@ -169,26 +176,26 @@ func (r *Run) exec(ctx context.Context, extraArgs ...string) error {
 		args = append(args, r.toolPath)
 	}
 
-	cancelCtx, cancel := context.WithCancel(ctx)
+	cancelCtx, cancel := context.WithCancelCause(ctx)
+	r.cancel = cancel
 	c, stdout, stderr, err := setupForkCommand(cancelCtx, r.binPath, r.content, r.opts.Input, args, eventsWrite)
 	if err != nil {
-		cancel()
+		r.err = fmt.Errorf("failed to setup gptscript: %w", err)
+		r.cancel(r.err)
 		_ = eventsRead.Close()
 		r.state = Error
-		r.err = fmt.Errorf("failed to setup gptscript: %w", err)
 		return r.err
 	}
 
 	if err = c.Start(); err != nil {
-		cancel()
+		r.err = fmt.Errorf("failed to start gptscript: %w", err)
+		r.cancel(r.err)
 		_ = eventsRead.Close()
 		r.state = Error
-		r.err = fmt.Errorf("failed to start gptscript: %w", err)
 		return r.err
 	}
 
 	r.state = Running
-	r.cmd = c
 	r.stdout = stdout
 	r.stderr = stderr
 	r.events = make(chan Event, 100)
@@ -197,14 +204,15 @@ func (r *Run) exec(ctx context.Context, extraArgs ...string) error {
 	r.wait = func() error {
 		err := c.Wait()
 		_ = eventsRead.Close()
-		cancel()
 		if err != nil {
 			r.state = Error
-			r.err = fmt.Errorf("failed to wait for gptscript: %w", err)
+			r.err = fmt.Errorf("failed to wait for gptscript: error: %w, stderr: %s", err, string(r.errput))
+			r.cancel(r.err)
 		} else {
 			if r.state == Running {
 				r.state = Finished
 			}
+			r.cancel(nil)
 		}
 		return r.err
 	}
@@ -255,7 +263,7 @@ func (r *Run) readEvents(ctx context.Context, events io.Reader) {
 
 	if err != nil && !errors.Is(err, io.EOF) {
 		slog.Debug("failed to read events", "error", err)
-		r.err = fmt.Errorf("failed to read events: %w", err)
+		r.err = fmt.Errorf("failed to read events: error: %w, stderr: %s", err, string(r.errput))
 	}
 }
 
@@ -332,6 +340,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		cancelCtx, cancel = context.WithCancelCause(ctx)
 	)
 
+	r.cancel = cancel
 	defer func() {
 		if err != nil {
 			cancel(err)
@@ -465,6 +474,8 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		if err := context.Cause(cancelCtx); !errors.Is(err, context.Canceled) && r.err == nil {
 			r.state = Error
 			r.err = err
+		} else if r.state != Continue {
+			r.state = Finished
 		}
 		return r.err
 	}
