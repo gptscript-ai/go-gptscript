@@ -90,7 +90,6 @@ func TestEvaluateWithContext(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error getting current working directory: %v", err)
 	}
-	fmt.Println(wd)
 
 	tool := &ToolDef{
 		Instructions: "What is the capital of the united states?",
@@ -102,10 +101,6 @@ func TestEvaluateWithContext(t *testing.T) {
 	run, err := client.Evaluate(context.Background(), Opts{DisableCache: true, IncludeEvents: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
-	}
-
-	for event := range run.Events() {
-		fmt.Println(event)
 	}
 
 	out, err := run.Text()
