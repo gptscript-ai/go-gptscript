@@ -567,6 +567,57 @@ func TestFileChat(t *testing.T) {
 	}
 }
 
+func TestToolWithGlobalTools(t *testing.T) {
+	var runStartSeen, callStartSeen, callFinishSeen, callProgressSeen, runFinishSeen bool
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting current working directory: %v", err)
+	}
+
+	var eventContent string
+
+	run, err := client.Run(context.Background(), wd+"/test/global-tools.gpt", Opts{DisableCache: true, IncludeEvents: true})
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	for e := range run.Events() {
+		if e.Type == EventTypeRunStart {
+			runStartSeen = true
+		} else if e.Type == EventTypeCallStart {
+			callStartSeen = true
+		} else if e.Type == EventTypeCallFinish {
+			callFinishSeen = true
+		} else if e.Type == EventTypeRunFinish {
+			runFinishSeen = true
+		} else if e.Type == EventTypeCallProgress {
+			callProgressSeen = true
+		}
+		eventContent += e.Content
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if !strings.Contains(eventContent, "Hello") {
+		t.Errorf("Unexpected event output: %s", eventContent)
+	}
+
+	if !strings.Contains(out, "Hello!") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+
+	if len(run.ErrorOutput()) == 0 {
+		t.Error("No stderr output")
+	}
+
+	if !runStartSeen || !callStartSeen || !callFinishSeen || !runFinishSeen || !callProgressSeen {
+		t.Errorf("Missing events: %t %t %t %t %t", runStartSeen, callStartSeen, callFinishSeen, runFinishSeen, callProgressSeen)
+	}
+}
+
 func TestGetCommand(t *testing.T) {
 	currentEnvVar := os.Getenv("GPTSCRIPT_BIN")
 	t.Cleanup(func() {

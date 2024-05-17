@@ -215,33 +215,47 @@ func (r *Run) exec(ctx context.Context, extraArgs ...string) error {
 func (r *Run) readEvents(ctx context.Context, events io.Reader) {
 	defer close(r.events)
 
-	scan := bufio.NewScanner(events)
-	for scan.Scan() {
+	var (
+		n    int
+		err  error
+		frag []byte
+
+		b = make([]byte, 64*1024)
+	)
+	for ; ; n, err = events.Read(b) {
+		if n == 0 && err != nil {
+			break
+		}
+
 		if !r.opts.IncludeEvents {
 			continue
 		}
 
-		line := scan.Bytes()
-		if len(line) == 0 {
-			continue
-		}
+		for _, line := range bytes.Split(append(frag, b[:n]...), []byte("\n\n")) {
+			if line = bytes.TrimSpace(line); len(line) == 0 {
+				frag = frag[:0]
+				continue
+			}
 
-		var event Event
-		if err := json.Unmarshal(line, &event); err != nil {
-			slog.Debug("failed to unmarshal event", "error", err, "event", string(line))
-			continue
-		}
+			var event Event
+			if err := json.Unmarshal(line, &event); err != nil {
+				slog.Debug("failed to unmarshal event", "error", err, "event", string(b))
+				frag = line[:]
+				continue
+			}
 
-		select {
-		case <-ctx.Done():
-			go func() {
-				for scan.Scan() {
-					// Drain any remaining events
-				}
-			}()
-			return
-		case r.events <- event:
+			select {
+			case <-ctx.Done():
+				return
+			case r.events <- event:
+				frag = frag[:0]
+			}
 		}
+	}
+
+	if err != nil && !errors.Is(err, io.EOF) {
+		slog.Debug("failed to read events", "error", err)
+		r.err = fmt.Errorf("failed to read events: %w", err)
 	}
 }
 
@@ -367,16 +381,14 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 	go r.readEvents(cancelCtx, eventsRead)
 
 	go func() {
+		var (
+			n    int
+			frag []byte
+			buf  = make([]byte, 64*1024)
+		)
 		bufferedStdout := bufio.NewWriter(stdoutWriter)
 		bufferedStderr := bufio.NewWriter(stderrWriter)
-		scan := bufio.NewScanner(resp.Body)
 		defer func() {
-			go func() {
-				for scan.Scan() {
-					// Drain any remaining events
-				}
-			}()
-
 			eventsWrite.Close()
 
 			bufferedStderr.Flush()
@@ -390,37 +402,58 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 			resp.Body.Close()
 		}()
 
-		for scan.Scan() {
-			line := bytes.TrimSpace(bytes.TrimPrefix(scan.Bytes(), []byte("data: ")))
-			if len(line) == 0 {
-				continue
-			}
-			if bytes.Equal(line, []byte("[DONE]")) {
-				return
+		for ; ; n, err = resp.Body.Read(buf) {
+			if n == 0 && err != nil {
+				break
 			}
 
-			if bytes.HasPrefix(line, []byte(`{"stdout":`)) {
-				_, err = bufferedStdout.Write(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte(`{"stdout":`)), []byte("}")))
-				if err != nil {
-					r.state = Error
-					r.err = fmt.Errorf("failed to write stdout: %w", err)
+			for _, line := range bytes.Split(bytes.TrimSpace(append(frag, buf[:n]...)), []byte("\n\n")) {
+				line = bytes.TrimSpace(bytes.TrimPrefix(line, []byte("data: ")))
+				if len(line) == 0 {
+					frag = frag[:0]
+					continue
+				}
+				if bytes.Equal(line, []byte("[DONE]")) {
 					return
 				}
-			} else if bytes.HasPrefix(line, []byte(`{"stderr":`)) {
-				_, err = bufferedStderr.Write(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte(`{"stderr":`)), []byte("}")))
-				if err != nil {
-					r.state = Error
-					r.err = fmt.Errorf("failed to write stderr: %w", err)
-					return
+
+				// Is this a JSON object?
+				if err := json.Unmarshal(line, &[]map[string]any{make(map[string]any)}[0]); err != nil {
+					// If not, then wait until we get the rest of the output.
+					frag = line[:]
+					continue
 				}
-			} else {
-				_, err = eventsWrite.Write(append(line, '\n'))
-				if err != nil {
-					r.state = Error
-					r.err = fmt.Errorf("failed to write events: %w", err)
-					return
+
+				frag = frag[:0]
+
+				if bytes.HasPrefix(line, []byte(`{"stdout":`)) {
+					_, err = bufferedStdout.Write(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte(`{"stdout":`)), []byte("}")))
+					if err != nil {
+						r.state = Error
+						r.err = fmt.Errorf("failed to write stdout: %w", err)
+						return
+					}
+				} else if bytes.HasPrefix(line, []byte(`{"stderr":`)) {
+					_, err = bufferedStderr.Write(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte(`{"stderr":`)), []byte("}")))
+					if err != nil {
+						r.state = Error
+						r.err = fmt.Errorf("failed to write stderr: %w", err)
+						return
+					}
+				} else {
+					_, err = eventsWrite.Write(append(line, '\n', '\n'))
+					if err != nil {
+						r.state = Error
+						r.err = fmt.Errorf("failed to write events: %w", err)
+						return
+					}
 				}
 			}
+		}
+
+		if err != nil && !errors.Is(err, io.EOF) {
+			slog.Debug("failed to read events from response", "error", err)
+			r.err = fmt.Errorf("failed to read events: %w", err)
 		}
 	}()
 

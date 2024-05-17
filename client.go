@@ -171,7 +171,7 @@ func (c *Client) runBasicCommand(ctx context.Context, command, requestPath, tool
 	if run.url != "" {
 		var m any
 		if content != "" || toolPath != "" {
-			m = map[string]any{"input": content, "file": toolPath}
+			m = map[string]any{"content": content, "file": toolPath}
 		}
 		err = run.request(ctx, m)
 	} else {
