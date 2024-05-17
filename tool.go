@@ -52,6 +52,18 @@ func (t *ToolDef) String() string {
 	if t.Cache != nil && !*t.Cache {
 		sb.WriteString("Cache: false\n")
 	}
+	if len(t.Context) > 0 {
+		sb.WriteString(fmt.Sprintf("Context: %s\n", strings.Join(t.Context, ", ")))
+	}
+	if len(t.ExportContext) > 0 {
+		sb.WriteString(fmt.Sprintf("Export Context: %s\n", strings.Join(t.ExportContext, ", ")))
+	}
+	if len(t.Export) > 0 {
+		sb.WriteString(fmt.Sprintf("Export: %s\n", strings.Join(t.Export, ", ")))
+	}
+	if len(t.GlobalTools) > 0 {
+		sb.WriteString(fmt.Sprintf("Global Tools: %s\n", strings.Join(t.GlobalTools, ", ")))
+	}
 	if t.Temperature != nil {
 		sb.WriteString(fmt.Sprintf("Temperature: %f\n", *t.Temperature))
 	}
