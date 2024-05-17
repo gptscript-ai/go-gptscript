@@ -53,12 +53,11 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
 func listTools(ctx context.Context) (string, error) {
-	client := &gogptscript.Client{}
-	client.Complete()
+	client := gptscript.NewClient(gptscript.ClientOpts{})
 	return client.ListTools(ctx)
 }
 ```
@@ -75,12 +74,11 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
 func listModels(ctx context.Context) ([]string, error) {
-	client := &gogptscript.Client{}
-	client.Complete()
+	client := gptscript.NewClient(gptscript.ClientOpts{})
 	return client.ListModels(ctx)
 }
 ```
@@ -95,13 +93,11 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
-func parse(ctx context.Context, fileName string) ([]gogptscript.Node, error) {
-	client := &gogptscript.Client{}
-	client.Complete()
-	
+func parse(ctx context.Context, fileName string) ([]gptscript.Node, error) {
+	client := gptscript.NewClient(gptscript.ClientOpts{})
 	return client.Parse(ctx, fileName)
 }
 ```
@@ -116,13 +112,11 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
-func parseTool(ctx context.Context, contents string) ([]gogptscript.Node, error) {
-	client := &gogptscript.Client{}
-	client.Complete()
-	
+func parseTool(ctx context.Context, contents string) ([]gptscript.Node, error) {
+	client := gptscript.NewClient(gptscript.ClientOpts{})
 	return client.ParseTool(ctx, contents)
 }
 ```
@@ -137,13 +131,11 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
-func parse(ctx context.Context, nodes []gogptscript.node) (string, error) {
-	client := &gogptscript.Client{}
-	client.Complete()
-	
+func parse(ctx context.Context, nodes []gptscript.Node) (string, error) {
+	client := gptscript.NewClient(gptscript.ClientOpts{})
 	return client.Fmt(ctx, nodes)
 }
 ```
@@ -158,18 +150,16 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
 func runTool(ctx context.Context) (string, error) {
-	t := gogptscript.ToolDef{
+	t := gptscript.ToolDef{
 		Instructions: "who was the president of the united states in 1928?",
 	}
 
-	client := &gogptscript.Client{}
-	client.Complete()
-
-	run, err := client.Evaluate(ctx, gogptscript.Opts{}, t)
+	client := gptscript.NewClient(gptscript.ClientOpts{})
+	run, err := client.Evaluate(ctx, gptscript.Opts{}, t)
 	if err != nil {
 		return "", err
 	}
@@ -188,18 +178,16 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
 func runFile(ctx context.Context) (string, error) {
-	opts := gogptscript.Opts{
+	opts := gptscript.Opts{
 		DisableCache: &[]bool{true}[0],
 		Input: "--input hello",
 	}
 
-	client := &gogptscript.Client{}
-	client.Complete()
-
+	client := gptscript.NewClient(gptscript.ClientOpts{})
 	run, err := client.Run(ctx, "./hello.gpt",  opts)
 	if err != nil {
 		return "", err
@@ -219,19 +207,17 @@ package main
 import (
 	"context"
 
-	gogptscript "github.com/gptscript-ai/go-gptscript"
+	"github.com/gptscript-ai/go-gptscript"
 )
 
 func streamExecTool(ctx context.Context) error {
-	opts := gogptscript.Opts{
+	opts := gptscript.Opts{
 		DisableCache:  &[]bool{true}[0],
 		IncludeEvents: true,
 		Input:         "--input world",
 	}
 
-	client := &gogptscript.Client{}
-	client.Complete()
-
+	client := gptscript.NewClient(gptscript.ClientOpts{})
 	run, err := client.Run(ctx, "./hello.gpt", opts)
 	if err != nil {
 		return err
