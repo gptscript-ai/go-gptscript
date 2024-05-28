@@ -1,23 +1,50 @@
 package gptscript
 
-import "time"
+import (
+	"time"
+)
 
-type Event struct {
-	RunID              string          `json:"runID,omitempty"`
-	Time               time.Time       `json:"time,omitempty"`
-	CallContext        *CallContext    `json:"callContext,omitempty"`
-	ToolSubCalls       map[string]Call `json:"toolSubCalls,omitempty"`
-	ToolResults        int             `json:"toolResults,omitempty"`
-	Type               EventType       `json:"type,omitempty"`
-	ChatCompletionID   string          `json:"chatCompletionId,omitempty"`
-	ChatRequest        any             `json:"chatRequest,omitempty"`
-	ChatResponse       any             `json:"chatResponse,omitempty"`
-	ChatResponseCached bool            `json:"chatResponseCached,omitempty"`
-	Content            string          `json:"content,omitempty"`
-	Program            *Program        `json:"program,omitempty"`
-	Input              string          `json:"input,omitempty"`
-	Output             string          `json:"output,omitempty"`
-	Err                string          `json:"err,omitempty"`
+type Frame struct {
+	Run  *RunFrame  `json:"run,omitempty"`
+	Call *CallFrame `json:"call,omitempty"`
+}
+
+type RunFrame struct {
+	Calls     map[string]Call `json:"-"`
+	ID        string          `json:"id"`
+	Program   Program         `json:"program"`
+	Input     string          `json:"input"`
+	Output    string          `json:"output"`
+	Error     string          `json:"error"`
+	Start     time.Time       `json:"start"`
+	End       time.Time       `json:"end"`
+	State     RunState        `json:"state"`
+	ChatState any             `json:"chatState"`
+	Type      EventType       `json:"type"`
+}
+
+type CallFrame struct {
+	CallContext `json:",inline"`
+
+	Type        EventType `json:"type"`
+	Start       time.Time `json:"start"`
+	End         time.Time `json:"end"`
+	Input       string    `json:"input"`
+	Output      []Output  `json:"output"`
+	Usage       Usage     `json:"usage"`
+	LLMRequest  any       `json:"llmRequest"`
+	LLMResponse any       `json:"llmResponse"`
+}
+
+type Usage struct {
+	PromptTokens     int `json:"promptTokens,omitempty"`
+	CompletionTokens int `json:"completionTokens,omitempty"`
+	TotalTokens      int `json:"totalTokens,omitempty"`
+}
+
+type Output struct {
+	Content  string          `json:"content"`
+	SubCalls map[string]Call `json:"subCalls"`
 }
 
 type Program struct {
@@ -64,6 +91,7 @@ const (
 	EventTypeCallSubCalls EventType = "callSubCalls"
 	EventTypeCallProgress EventType = "callProgress"
 	EventTypeChat         EventType = "callChat"
+	EventTypeCallConfirm  EventType = "callConfirm"
 	EventTypeCallFinish   EventType = "callFinish"
 	EventTypeRunFinish    EventType = "runFinish"
 )

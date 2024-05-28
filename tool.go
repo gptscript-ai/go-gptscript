@@ -117,12 +117,19 @@ type ToolNode struct {
 
 type Tool struct {
 	ToolDef     `json:",inline"`
-	ID          string            `json:"id,omitempty"`
-	Arguments   *openapi3.Schema  `json:"arguments,omitempty"`
-	ToolMapping map[string]string `json:"toolMapping,omitempty"`
-	LocalTools  map[string]string `json:"localTools,omitempty"`
-	Source      ToolSource        `json:"source,omitempty"`
-	WorkingDir  string            `json:"workingDir,omitempty"`
+	ID          string                     `json:"id,omitempty"`
+	Arguments   *openapi3.Schema           `json:"arguments,omitempty"`
+	ToolMapping map[string][]ToolReference `json:"toolMapping,omitempty"`
+	LocalTools  map[string]string          `json:"localTools,omitempty"`
+	Source      ToolSource                 `json:"source,omitempty"`
+	WorkingDir  string                     `json:"workingDir,omitempty"`
+}
+
+type ToolReference struct {
+	Named     string `json:"named,omitempty"`
+	Reference string `json:"reference,omitempty"`
+	Arg       string `json:"arg,omitempty"`
+	ToolID    string `json:"toolID,omitempty"`
 }
 
 type ToolSource struct {

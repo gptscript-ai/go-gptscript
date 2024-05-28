@@ -10,28 +10,26 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/exec"
 	"strconv"
-	"strings"
 	"sync"
 )
 
 var errAbortRun = errors.New("run aborted")
 
 type Run struct {
-	url, binPath, requestPath, toolPath, content string
-	opts                                         Opts
-	state                                        RunState
-	chatState                                    string
-	cancel                                       context.CancelCauseFunc
-	err                                          error
-	stdout, stderr                               io.Reader
-	wait                                         func() error
+	url, requestPath, toolPath, content string
+	opts                                Options
+	state                               RunState
+	chatState                           string
+	cancel                              context.CancelCauseFunc
+	err                                 error
+	stdout, stderr                      io.Reader
+	wait                                func() error
 
 	rawOutput      map[string]any
 	output, errput []byte
-	events         chan Event
+	events         chan Frame
 	lock           sync.Mutex
 	complete       bool
 }
@@ -74,8 +72,8 @@ func (r *Run) ErrorOutput() string {
 	return string(r.errput)
 }
 
-// Events returns a channel that streams the gptscript events as they occur.
-func (r *Run) Events() <-chan Event {
+// Events returns a channel that streams the gptscript events as they occur as Frames.
+func (r *Run) Events() <-chan Frame {
 	return r.events
 }
 
@@ -120,7 +118,6 @@ func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
 
 	run := &Run{
 		url:         r.url,
-		binPath:     r.binPath,
 		requestPath: r.requestPath,
 		state:       Creating,
 		chatState:   r.chatState,
@@ -133,108 +130,34 @@ func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
 		run.opts.ChatState = run.chatState
 	}
 
-	if run.url != "" {
-		var payload any
-		if r.content != "" {
-			payload = requestPayload{
-				Content: run.content,
-				Input:   input,
-				Opts:    run.opts,
-			}
-		} else if run.toolPath != "" {
-			payload = requestPayload{
-				File:  run.toolPath,
-				Input: input,
-				Opts:  run.opts,
-			}
+	var payload any
+	if r.content != "" {
+		payload = requestPayload{
+			Content: run.content,
+			Input:   input,
+			Options: run.opts,
 		}
-
-		return run, run.request(ctx, payload)
-	}
-
-	return run, run.exec(ctx)
-}
-
-func (r *Run) exec(ctx context.Context, extraArgs ...string) error {
-	eventsRead, eventsWrite, err := os.Pipe()
-	if err != nil {
-		r.state = Error
-		r.err = fmt.Errorf("failed to create events reader: %w", err)
-		return r.err
-	}
-
-	// Close the parent pipe after starting the child process
-	defer eventsWrite.Close()
-
-	chatState := r.chatState
-	if chatState == "" {
-		chatState = "null"
-	}
-	args := append(r.opts.toArgs(), "--chat-state="+chatState)
-	args = append(args, extraArgs...)
-	if r.toolPath != "" {
-		args = append(args, r.toolPath)
-	}
-
-	cancelCtx, cancel := context.WithCancelCause(ctx)
-	r.cancel = cancel
-	c, stdout, stderr, err := setupForkCommand(cancelCtx, r.binPath, r.content, r.opts.Input, args, eventsWrite)
-	if err != nil {
-		r.err = fmt.Errorf("failed to setup gptscript: %w", err)
-		r.cancel(r.err)
-		_ = eventsRead.Close()
-		r.state = Error
-		return r.err
-	}
-
-	if err = c.Start(); err != nil {
-		r.err = fmt.Errorf("failed to start gptscript: %w", err)
-		r.cancel(r.err)
-		_ = eventsRead.Close()
-		r.state = Error
-		return r.err
-	}
-
-	r.state = Running
-	r.stdout = stdout
-	r.stderr = stderr
-	r.events = make(chan Event, 100)
-	go r.readEvents(cancelCtx, eventsRead)
-
-	r.wait = func() error {
-		err := c.Wait()
-		_ = eventsRead.Close()
-		if err != nil {
-			r.state = Error
-			r.err = fmt.Errorf("failed to wait for gptscript: error: %w, stderr: %s", err, string(r.errput))
-			r.cancel(r.err)
-		} else {
-			if r.state == Running {
-				r.state = Finished
-			}
-			r.cancel(nil)
+	} else if run.toolPath != "" {
+		payload = requestPayload{
+			File:    run.toolPath,
+			Input:   input,
+			Options: run.opts,
 		}
-		return r.err
 	}
 
-	return nil
+	return run, run.request(ctx, payload)
 }
 
 func (r *Run) readEvents(ctx context.Context, events io.Reader) {
 	defer close(r.events)
 
 	var (
-		n    int
 		err  error
 		frag []byte
 
 		b = make([]byte, 64*1024)
 	)
-	for ; ; n, err = events.Read(b) {
-		if n == 0 && err != nil {
-			break
-		}
-
+	for n := 0; n != 0 || err == nil; n, err = events.Read(b) {
 		if !r.opts.IncludeEvents {
 			continue
 		}
@@ -245,7 +168,7 @@ func (r *Run) readEvents(ctx context.Context, events io.Reader) {
 				continue
 			}
 
-			var event Event
+			var event Frame
 			if err := json.Unmarshal(line, &event); err != nil {
 				slog.Debug("failed to unmarshal event", "error", err, "event", string(b))
 				frag = line[:]
@@ -371,7 +294,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		return r.err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		r.state = Error
 		r.err = fmt.Errorf("unexpected response status: %s", resp.Status)
 		return r.err
@@ -386,12 +309,12 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 	r.stdout = stdout
 	r.stderr = stderr
 
-	r.events = make(chan Event, 100)
+	r.events = make(chan Frame, 100)
 	go r.readEvents(cancelCtx, eventsRead)
 
 	go func() {
 		var (
-			n    int
+			err  error
 			frag []byte
 			buf  = make([]byte, 64*1024)
 		)
@@ -411,11 +334,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 			resp.Body.Close()
 		}()
 
-		for ; ; n, err = resp.Body.Read(buf) {
-			if n == 0 && err != nil {
-				break
-			}
-
+		for n := 0; n != 0 || err == nil; n, err = resp.Body.Read(buf) {
 			for _, line := range bytes.Split(bytes.TrimSpace(append(frag, buf[:n]...)), []byte("\n\n")) {
 				line = bytes.TrimSpace(bytes.TrimPrefix(line, []byte("data: ")))
 				if len(line) == 0 {
@@ -485,6 +404,10 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 
 type RunState string
 
+func (rs RunState) IsTerminal() bool {
+	return rs == Finished || rs == Error
+}
+
 const (
 	Creating RunState = "creating"
 	Running  RunState = "running"
@@ -492,39 +415,6 @@ const (
 	Finished RunState = "finished"
 	Error    RunState = "error"
 )
-
-func setupForkCommand(ctx context.Context, bin, content, input string, args []string, extraFiles ...*os.File) (*exec.Cmd, io.Reader, io.Reader, error) {
-	var stdin io.Reader
-	if content != "" {
-		args = append(args, "-")
-		stdin = strings.NewReader(content)
-	}
-
-	if input != "" {
-		args = append(args, input)
-	}
-
-	c := exec.CommandContext(ctx, bin, args...)
-	if len(extraFiles) > 0 {
-		appendExtraFiles(c, extraFiles...)
-	}
-
-	if content != "" {
-		c.Stdin = stdin
-	}
-
-	stdout, err := c.StdoutPipe()
-	if err != nil {
-		return nil, new(reader), new(reader), err
-	}
-
-	stderr, err := c.StderrPipe()
-	if err != nil {
-		return nil, stdout, new(reader), err
-	}
-
-	return c, stdout, stderr, nil
-}
 
 type runSubCommand struct {
 	Run
@@ -586,7 +476,7 @@ type requestPayload struct {
 	Content string `json:"content"`
 	File    string `json:"file"`
 	Input   string `json:"input"`
-	Opts    `json:",inline"`
+	Options `json:",inline"`
 }
 
 func isObject(b []byte) bool {

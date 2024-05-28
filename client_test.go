@@ -13,19 +13,26 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-var client *Client
+var c Client
 
 func TestMain(m *testing.M) {
 	if os.Getenv("OPENAI_API_KEY") == "" && os.Getenv("GPTSCRIPT_URL") == "" {
 		panic("OPENAI_API_KEY or GPTSCRIPT_URL environment variable must be set")
 	}
 
-	client = NewClient(ClientOpts{GPTScriptURL: os.Getenv("GPTSCRIPT_URL"), GPTScriptBin: os.Getenv("GPTSCRIPT_BIN")})
-	os.Exit(m.Run())
+	var err error
+	c, err = NewClient()
+	if err != nil {
+		panic(fmt.Sprintf("error creating client: %s", err))
+	}
+
+	exitCode := m.Run()
+	c.Close()
+	os.Exit(exitCode)
 }
 
 func TestVersion(t *testing.T) {
-	out, err := client.Version(context.Background())
+	out, err := c.Version(context.Background())
 	if err != nil {
 		t.Errorf("Error getting version: %v", err)
 	}
@@ -36,7 +43,7 @@ func TestVersion(t *testing.T) {
 }
 
 func TestListTools(t *testing.T) {
-	tools, err := client.ListTools(context.Background())
+	tools, err := c.ListTools(context.Background())
 	if err != nil {
 		t.Errorf("Error listing tools: %v", err)
 	}
@@ -47,7 +54,7 @@ func TestListTools(t *testing.T) {
 }
 
 func TestListModels(t *testing.T) {
-	models, err := client.ListModels(context.Background())
+	models, err := c.ListModels(context.Background())
 	if err != nil {
 		t.Errorf("Error listing models: %v", err)
 	}
@@ -60,7 +67,7 @@ func TestListModels(t *testing.T) {
 func TestAbortRun(t *testing.T) {
 	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := client.Evaluate(context.Background(), Opts{DisableCache: true, IncludeEvents: true}, tool)
+	run, err := c.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -84,7 +91,7 @@ func TestAbortRun(t *testing.T) {
 func TestSimpleEvaluate(t *testing.T) {
 	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := client.Evaluate(context.Background(), Opts{}, tool)
+	run, err := c.Evaluate(context.Background(), Options{}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -122,7 +129,7 @@ func TestEvaluateWithContext(t *testing.T) {
 		},
 	}
 
-	run, err := client.Evaluate(context.Background(), Opts{DisableCache: true, IncludeEvents: true}, tool)
+	run, err := c.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -134,27 +141,6 @@ func TestEvaluateWithContext(t *testing.T) {
 
 	if out != "Acorn Labs" {
 		t.Errorf("Unexpected output: %s", out)
-	}
-}
-
-func TestRunFileChdir(t *testing.T) {
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Error getting current working directory: %v", err)
-	}
-	// By changing the directory here, we should be able to find the test.gpt file without `./test` (see TestStreamRunFile)
-	run, err := client.Run(context.Background(), "test.gpt", Opts{Chdir: wd + "/test"})
-	if err != nil {
-		t.Errorf("Error executing tool: %v", err)
-	}
-
-	out, err := run.Text()
-	if err != nil {
-		t.Errorf("Error reading output: %v", err)
-	}
-
-	if out == "" {
-		t.Error("No output from tool")
 	}
 }
 
@@ -176,7 +162,7 @@ the response should be in JSON and match the format:
 `,
 	}
 
-	run, err := client.Evaluate(context.Background(), Opts{DisableCache: true}, tool)
+	run, err := c.Evaluate(context.Background(), Options{DisableCache: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -212,7 +198,7 @@ func TestEvaluateWithToolList(t *testing.T) {
 		},
 	}
 
-	run, err := client.Evaluate(context.Background(), Opts{}, tools...)
+	run, err := c.Evaluate(context.Background(), Options{}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -253,7 +239,7 @@ func TestEvaluateWithToolListAndSubTool(t *testing.T) {
 		},
 	}
 
-	run, err := client.Evaluate(context.Background(), Opts{SubTool: "other"}, tools...)
+	run, err := c.Evaluate(context.Background(), Options{SubTool: "other"}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -272,13 +258,17 @@ func TestStreamEvaluate(t *testing.T) {
 	var eventContent string
 	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := client.Evaluate(context.Background(), Opts{IncludeEvents: true}, tool)
+	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
 
 	for e := range run.Events() {
-		eventContent += e.Content
+		if e.Call != nil {
+			for _, o := range e.Call.Output {
+				eventContent += o.Content
+			}
+		}
 	}
 
 	out, err := run.Text()
@@ -294,8 +284,8 @@ func TestStreamEvaluate(t *testing.T) {
 		t.Errorf("Unexpected output: %s", out)
 	}
 
-	if len(run.ErrorOutput()) == 0 {
-		t.Error("No stderr output")
+	if len(run.ErrorOutput()) != 0 {
+		t.Errorf("Should have no stderr output: %v", run.ErrorOutput())
 	}
 }
 
@@ -306,13 +296,17 @@ func TestStreamRun(t *testing.T) {
 	}
 
 	var eventContent string
-	run, err := client.Run(context.Background(), wd+"/test/catcher.gpt", Opts{IncludeEvents: true})
+	run, err := c.Run(context.Background(), wd+"/test/catcher.gpt", Options{IncludeEvents: true})
 	if err != nil {
 		t.Errorf("Error executing file: %v", err)
 	}
 
 	for e := range run.Events() {
-		eventContent += e.Content
+		if e.Call != nil {
+			for _, o := range e.Call.Output {
+				eventContent += o.Content
+			}
+		}
 	}
 
 	stdErr, err := io.ReadAll(run.stderr)
@@ -333,8 +327,8 @@ func TestStreamRun(t *testing.T) {
 		t.Errorf("Unexpected output: %s", out)
 	}
 
-	if len(stdErr) == 0 {
-		t.Error("No stderr output")
+	if len(stdErr) != 0 {
+		t.Error("Should have no stderr output")
 	}
 }
 
@@ -344,7 +338,7 @@ func TestParseSimpleFile(t *testing.T) {
 		t.Fatalf("Error getting working directory: %v", err)
 	}
 
-	tools, err := client.Parse(context.Background(), wd+"/test/test.gpt")
+	tools, err := c.Parse(context.Background(), wd+"/test/test.gpt")
 	if err != nil {
 		t.Errorf("Error parsing file: %v", err)
 	}
@@ -363,7 +357,7 @@ func TestParseSimpleFile(t *testing.T) {
 }
 
 func TestParseTool(t *testing.T) {
-	tools, err := client.ParseTool(context.Background(), "echo hello")
+	tools, err := c.ParseTool(context.Background(), "echo hello")
 	if err != nil {
 		t.Errorf("Error parsing tool: %v", err)
 	}
@@ -382,7 +376,7 @@ func TestParseTool(t *testing.T) {
 }
 
 func TestParseToolWithTextNode(t *testing.T) {
-	tools, err := client.ParseTool(context.Background(), "echo hello\n---\n!markdown\nhello")
+	tools, err := c.ParseTool(context.Background(), "echo hello\n---\n!markdown\nhello")
 	if err != nil {
 		t.Errorf("Error parsing tool: %v", err)
 	}
@@ -443,7 +437,7 @@ func TestFmt(t *testing.T) {
 		},
 	}
 
-	out, err := client.Fmt(context.Background(), nodes)
+	out, err := c.Fmt(context.Background(), nodes)
 	if err != nil {
 		t.Errorf("Error formatting nodes: %v", err)
 	}
@@ -503,7 +497,7 @@ func TestFmtWithTextNode(t *testing.T) {
 		},
 	}
 
-	out, err := client.Fmt(context.Background(), nodes)
+	out, err := c.Fmt(context.Background(), nodes)
 	if err != nil {
 		t.Errorf("Error formatting nodes: %v", err)
 	}
@@ -533,7 +527,7 @@ func TestToolChat(t *testing.T) {
 		Tools:        []string{"sys.chat.finish"},
 	}
 
-	run, err := client.Evaluate(context.Background(), Opts{DisableCache: true}, tool)
+	run, err := c.Evaluate(context.Background(), Options{DisableCache: true}, tool)
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
@@ -579,7 +573,7 @@ func TestFileChat(t *testing.T) {
 		t.Fatalf("Error getting current working directory: %v", err)
 	}
 
-	run, err := client.Run(context.Background(), wd+"/test/chat.gpt", Opts{})
+	run, err := c.Run(context.Background(), wd+"/test/chat.gpt", Options{})
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
@@ -628,24 +622,31 @@ func TestToolWithGlobalTools(t *testing.T) {
 
 	var eventContent string
 
-	run, err := client.Run(context.Background(), wd+"/test/global-tools.gpt", Opts{DisableCache: true, IncludeEvents: true})
+	run, err := c.Run(context.Background(), wd+"/test/global-tools.gpt", Options{DisableCache: true, IncludeEvents: true})
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
 
 	for e := range run.Events() {
-		if e.Type == EventTypeRunStart {
-			runStartSeen = true
-		} else if e.Type == EventTypeCallStart {
-			callStartSeen = true
-		} else if e.Type == EventTypeCallFinish {
-			callFinishSeen = true
-		} else if e.Type == EventTypeRunFinish {
-			runFinishSeen = true
-		} else if e.Type == EventTypeCallProgress {
-			callProgressSeen = true
+		if e.Run != nil {
+			if e.Run.Type == EventTypeRunStart {
+				runStartSeen = true
+			} else if e.Run.Type == EventTypeRunFinish {
+				runFinishSeen = true
+			}
+		} else if e.Call != nil {
+			if e.Call.Type == EventTypeCallStart {
+				callStartSeen = true
+			} else if e.Call.Type == EventTypeCallFinish {
+				callFinishSeen = true
+
+				for _, o := range e.Call.Output {
+					eventContent += o.Content
+				}
+			} else if e.Call.Type == EventTypeCallProgress {
+				callProgressSeen = true
+			}
 		}
-		eventContent += e.Content
 	}
 
 	out, err := run.Text()
@@ -661,12 +662,155 @@ func TestToolWithGlobalTools(t *testing.T) {
 		t.Errorf("Unexpected output: %s", out)
 	}
 
-	if len(run.ErrorOutput()) == 0 {
-		t.Error("No stderr output")
+	if len(run.ErrorOutput()) != 0 {
+		t.Errorf("Should have no stderr output: %v", run.ErrorOutput())
 	}
 
 	if !runStartSeen || !callStartSeen || !callFinishSeen || !runFinishSeen || !callProgressSeen {
 		t.Errorf("Missing events: %t %t %t %t %t", runStartSeen, callStartSeen, callFinishSeen, runFinishSeen, callProgressSeen)
+	}
+}
+
+func TestConfirm(t *testing.T) {
+	var eventContent string
+	tools := []fmt.Stringer{
+		&ToolDef{
+			Instructions: "List the files in the current directory",
+			Tools:        []string{"sys.exec"},
+		},
+	}
+
+	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	// Wait for the confirm event
+	var confirmCallEvent *CallFrame
+	for e := range run.Events() {
+		if e.Call != nil {
+			for _, o := range e.Call.Output {
+				eventContent += o.Content
+			}
+
+			if e.Call.Type == EventTypeCallConfirm {
+				confirmCallEvent = e.Call
+				break
+			}
+		}
+	}
+
+	if confirmCallEvent == nil {
+		t.Fatalf("No confirm call event")
+	}
+
+	if !strings.Contains(confirmCallEvent.Input, "\"ls\"") {
+		t.Errorf("unexpected confirm input: %s", confirmCallEvent.Input)
+	}
+
+	if err = c.Confirm(context.Background(), AuthResponse{
+		ID:     confirmCallEvent.ID,
+		Accept: true,
+	}); err != nil {
+		t.Errorf("Error confirming: %v", err)
+	}
+
+	// Read the remainder of the events
+	for e := range run.Events() {
+		if e.Call != nil {
+			for _, o := range e.Call.Output {
+				eventContent += o.Content
+			}
+		}
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if !strings.Contains(eventContent, "Makefile\nREADME.md") {
+		t.Errorf("Unexpected event output: %s", eventContent)
+	}
+
+	if !strings.Contains(out, "Makefile") || !strings.Contains(out, "README.md") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+
+	if len(run.ErrorOutput()) != 0 {
+		t.Errorf("Should have no stderr output: %v", run.ErrorOutput())
+	}
+}
+
+func TestConfirmDeny(t *testing.T) {
+	var eventContent string
+	tools := []fmt.Stringer{
+		&ToolDef{
+			Instructions: "List the files in the current directory",
+			Tools:        []string{"sys.exec"},
+		},
+	}
+
+	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	// Wait for the confirm event
+	var confirmCallEvent *CallFrame
+	for e := range run.Events() {
+		if e.Call != nil {
+			for _, o := range e.Call.Output {
+				eventContent += o.Content
+			}
+
+			if e.Call.Type == EventTypeCallConfirm {
+				confirmCallEvent = e.Call
+				break
+			}
+		}
+	}
+
+	if confirmCallEvent == nil {
+		t.Fatalf("No confirm call event")
+	}
+
+	if !strings.Contains(confirmCallEvent.Input, "\"ls\"") {
+		t.Errorf("unexpected confirm input: %s", confirmCallEvent.Input)
+	}
+
+	if err = c.Confirm(context.Background(), AuthResponse{
+		ID:      confirmCallEvent.ID,
+		Accept:  false,
+		Message: "I will not allow it!",
+	}); err != nil {
+		t.Errorf("Error confirming: %v", err)
+	}
+
+	// Read the remainder of the events
+	for e := range run.Events() {
+		if e.Call != nil {
+			for _, o := range e.Call.Output {
+				eventContent += o.Content
+			}
+		}
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if !strings.Contains(strings.ToLower(eventContent), "authorization error") {
+		t.Errorf("Unexpected event output: %s", eventContent)
+	}
+
+	if !strings.Contains(strings.ToLower(out), "authorization error") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+
+	if len(run.ErrorOutput()) != 0 {
+		t.Errorf("Should have no stderr output: %v", run.ErrorOutput())
 	}
 }
 

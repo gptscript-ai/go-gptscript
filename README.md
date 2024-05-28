@@ -18,11 +18,7 @@ Additionally, you need the `gptscript` binary. You can install it on your system
 
 ## Client
 
-There are currently a couple "global" options, and the client helps to manage those. A client without any options is
-likely what you want. However, here are the current global options:
-
-- `gptscriptURL`: The URL (including `http(s)://) of an "SDK server" to use instead of the fork/exec model.
-- `gptscriptBin`: The path to a `gptscript` binary to use instead of the bundled one.
+The client allows the caller to run gptscript files, tools, and other operations (see below). There are currently no options for this client, so calling `NewClient()` is all you need. Although, the intention is that a single client is all you need for the life of your application, you should call `Close()` on the client when you are done.
 
 ## Options
 
@@ -32,12 +28,12 @@ None of the options is required, and the defaults will reduce the number of call
 - `cache`: Enable or disable caching. Default (true).
 - `cacheDir`: Specify the cache directory.
 - `quiet`: No output logging
-- `chdir`: Change current working directory
 - `subTool`: Use tool of this name, not the first tool
 - `input`: Input arguments for the tool run
 - `workspace`: Directory to use for the workspace, if specified it will not be deleted on exit
 - `inlcudeEvents`: Whether to include the streaming of events. Default (false). Note that if this is true, you must stream the events. See below for details.
 - `chatState`: The chat state to continue, or null to start a new chat and return the state
+- `confirm`: Prompt before running potentially dangerous commands
 
 ## Functions
 
@@ -57,7 +53,11 @@ import (
 )
 
 func listTools(ctx context.Context) (string, error) {
-	client := gptscript.NewClient(gptscript.ClientOpts{})
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
 	return client.ListTools(ctx)
 }
 ```
@@ -78,7 +78,11 @@ import (
 )
 
 func listModels(ctx context.Context) ([]string, error) {
-	client := gptscript.NewClient(gptscript.ClientOpts{})
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
 	return client.ListModels(ctx)
 }
 ```
@@ -97,7 +101,12 @@ import (
 )
 
 func parse(ctx context.Context, fileName string) ([]gptscript.Node, error) {
-	client := gptscript.NewClient(gptscript.ClientOpts{})
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
 	return client.Parse(ctx, fileName)
 }
 ```
@@ -116,7 +125,12 @@ import (
 )
 
 func parseTool(ctx context.Context, contents string) ([]gptscript.Node, error) {
-	client := gptscript.NewClient(gptscript.ClientOpts{})
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
 	return client.ParseTool(ctx, contents)
 }
 ```
@@ -135,7 +149,12 @@ import (
 )
 
 func parse(ctx context.Context, nodes []gptscript.Node) (string, error) {
-	client := gptscript.NewClient(gptscript.ClientOpts{})
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
 	return client.Fmt(ctx, nodes)
 }
 ```
@@ -158,8 +177,13 @@ func runTool(ctx context.Context) (string, error) {
 		Instructions: "who was the president of the united states in 1928?",
 	}
 
-	client := gptscript.NewClient(gptscript.ClientOpts{})
-	run, err := client.Evaluate(ctx, gptscript.Opts{}, t)
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
+	run, err := client.Evaluate(ctx, gptscript.Options{}, t)
 	if err != nil {
 		return "", err
 	}
@@ -182,12 +206,17 @@ import (
 )
 
 func runFile(ctx context.Context) (string, error) {
-	opts := gptscript.Opts{
+	opts := gptscript.Options{
 		DisableCache: &[]bool{true}[0],
 		Input: "--input hello",
 	}
 
-	client := gptscript.NewClient(gptscript.ClientOpts{})
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
 	run, err := client.Run(ctx, "./hello.gpt",  opts)
 	if err != nil {
 		return "", err
@@ -217,7 +246,12 @@ func streamExecTool(ctx context.Context) error {
 		Input:         "--input world",
 	}
 
-	client := gptscript.NewClient(gptscript.ClientOpts{})
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
 	run, err := client.Run(ctx, "./hello.gpt", opts)
 	if err != nil {
 		return err
@@ -232,6 +266,61 @@ func streamExecTool(ctx context.Context) error {
 	return err
 }
 ```
+
+### Confirm
+
+Using the `confirm: true` option allows a user to inspect potentially dangerous commands before they are run. The caller has the ability to allow or disallow their running. In order to do this, a caller should look for the `CallConfirm` event. This also means that `IncludeEvent` should be `true`.
+
+```go
+package main
+
+import (
+	"context"
+
+	"github.com/gptscript-ai/go-gptscript"
+)
+
+func runFileWithConfirm(ctx context.Context) (string, error) {
+	opts := gptscript.Options{
+		DisableCache: &[]bool{true}[0],
+		Input: "--input hello",
+		Confirm: true,
+		IncludeEvents: true,
+	}
+
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
+	run, err := client.Run(ctx, "./hello.gpt",  opts)
+	if err != nil {
+		return "", err
+	}
+
+	for event := range run.Events() {
+		if event.Type == gptscript.EventTypeCallConfirm {
+			// event.Tool has the information on the command being run.
+			// and event.Input will have the input to the command being run.
+
+			err = client.Confirm(ctx, gptscript.AuthResponse{
+				ID: event.ID,
+				Accept: true, // Or false if not allowed.
+				Message: "", // A message explaining why the command is not allowed (ignored if allowed).
+			})
+			if err != nil {
+				// Handle error
+			}
+		}
+
+		// Process event...
+	}
+
+	return run.Text()
+}
+```
+
 
 ## Types
 
