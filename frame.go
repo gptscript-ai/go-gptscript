@@ -10,17 +10,16 @@ type Frame struct {
 }
 
 type RunFrame struct {
-	Calls     map[string]Call `json:"-"`
-	ID        string          `json:"id"`
-	Program   Program         `json:"program"`
-	Input     string          `json:"input"`
-	Output    string          `json:"output"`
-	Error     string          `json:"error"`
-	Start     time.Time       `json:"start"`
-	End       time.Time       `json:"end"`
-	State     RunState        `json:"state"`
-	ChatState any             `json:"chatState"`
-	Type      EventType       `json:"type"`
+	ID        string    `json:"id"`
+	Program   Program   `json:"program"`
+	Input     string    `json:"input"`
+	Output    string    `json:"output"`
+	Error     string    `json:"error"`
+	Start     time.Time `json:"start"`
+	End       time.Time `json:"end"`
+	State     RunState  `json:"state"`
+	ChatState any       `json:"chatState"`
+	Type      EventType `json:"type"`
 }
 
 type CallFrame struct {
