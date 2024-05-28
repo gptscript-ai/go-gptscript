@@ -221,12 +221,12 @@ func TestEvaluateWithToolListAndSubTool(t *testing.T) {
 	tools := []fmt.Stringer{
 		&ToolDef{
 			Tools:        []string{"echo"},
-			Instructions: "echo hello there",
+			Instructions: "echo 'hello there'",
 		},
 		&ToolDef{
 			Name:         "other",
 			Tools:        []string{"echo"},
-			Instructions: "echo hello somewhere else",
+			Instructions: "echo 'hello somewhere else'",
 		},
 		&ToolDef{
 			Name:        "echo",
