@@ -6,7 +6,6 @@ type Options struct {
 	Input         string `json:"input"`
 	DisableCache  bool   `json:"disableCache"`
 	CacheDir      string `json:"cacheDir"`
-	Quiet         bool   `json:"quiet"`
 	SubTool       string `json:"subTool"`
 	Workspace     string `json:"workspace"`
 	ChatState     string `json:"chatState"`

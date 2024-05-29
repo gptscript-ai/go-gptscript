@@ -165,31 +165,9 @@ func (c *client) ParseTool(ctx context.Context, toolDef string) ([]Node, error) 
 
 // Fmt will format the given nodes into a string.
 func (c *client) Fmt(ctx context.Context, nodes []Node) (string, error) {
-	b, err := json.Marshal(Document{Nodes: nodes})
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal nodes: %w", err)
-	}
-
-	run := &runSubCommand{
-		Run: Run{
-			url:         c.gptscriptURL,
-			requestPath: "fmt",
-			state:       Creating,
-			toolPath:    "",
-			content:     string(b),
-		},
-	}
-
-	if err = run.request(ctx, Document{Nodes: nodes}); err != nil {
-		return "", err
-	}
-
-	out, err := run.Text()
+	out, err := c.runBasicCommand(ctx, "fmt", Document{Nodes: nodes})
 	if err != nil {
 		return "", err
-	}
-	if run.err != nil {
-		return run.ErrorOutput(), run.err
 	}
 
 	return out, nil
@@ -231,12 +209,11 @@ func (c *client) Confirm(ctx context.Context, resp AuthResponse) error {
 }
 
 func (c *client) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
-	run := &runSubCommand{
-		Run: Run{
-			url:         c.gptscriptURL,
-			requestPath: requestPath,
-			state:       Creating,
-		},
+	run := &Run{
+		url:          c.gptscriptURL,
+		requestPath:  requestPath,
+		state:        Creating,
+		basicCommand: true,
 	}
 
 	if err := run.request(ctx, body); err != nil {
