@@ -27,7 +27,6 @@ None of the options is required, and the defaults will reduce the number of call
 
 - `cache`: Enable or disable caching. Default (true).
 - `cacheDir`: Specify the cache directory.
-- `quiet`: No output logging
 - `subTool`: Use tool of this name, not the first tool
 - `input`: Input arguments for the tool run
 - `workspace`: Directory to use for the workspace, if specified it will not be deleted on exit
@@ -261,7 +260,6 @@ func streamExecTool(ctx context.Context) error {
 		// Process event...
 	}
 
-	// Wait for the output to ensure the script completes successfully.
 	_, err = run.Text()
 	return err
 }

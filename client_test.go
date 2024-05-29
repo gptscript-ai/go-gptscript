@@ -3,7 +3,6 @@ package gptscript
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -309,11 +308,6 @@ func TestStreamRun(t *testing.T) {
 		}
 	}
 
-	stdErr, err := io.ReadAll(run.stderr)
-	if err != nil {
-		t.Errorf("Error reading stderr: %v", err)
-	}
-
 	out, err := run.Text()
 	if err != nil {
 		t.Errorf("Error reading output: %v", err)
@@ -327,7 +321,7 @@ func TestStreamRun(t *testing.T) {
 		t.Errorf("Unexpected output: %s", out)
 	}
 
-	if len(stdErr) != 0 {
+	if len(run.ErrorOutput()) != 0 {
 		t.Error("Should have no stderr output")
 	}
 }

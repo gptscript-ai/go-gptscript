@@ -1,7 +1,6 @@
 package gptscript
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -24,36 +23,30 @@ type Run struct {
 	chatState                           string
 	cancel                              context.CancelCauseFunc
 	err                                 error
-	stdout, stderr                      io.Reader
-	wait                                func() error
+	wait                                func()
+	basicCommand                        bool
 
 	rawOutput      map[string]any
-	output, errput []byte
+	output, errput string
 	events         chan Frame
 	lock           sync.Mutex
-	complete       bool
 }
 
 // Text returns the text output of the gptscript. It blocks until the output is ready.
 func (r *Run) Text() (string, error) {
-	out, err := r.Bytes()
-	if err != nil {
-		return "", err
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	if r.err != nil {
+		return "", r.err
 	}
 
-	return string(out), nil
+	return r.output, nil
 }
 
 // Bytes returns the output of the gptscript in bytes. It blocks until the output is ready.
 func (r *Run) Bytes() ([]byte, error) {
-	if err := r.readAllOutput(); err != nil {
-		return nil, err
-	}
-	if r.err != nil {
-		return nil, r.err
-	}
-
-	return r.output, nil
+	out, err := r.Text()
+	return []byte(out), err
 }
 
 // State returns the current state of the gptscript.
@@ -69,7 +62,7 @@ func (r *Run) Err() error {
 // ErrorOutput returns the stderr output of the gptscript.
 // Should only be called after Bytes or Text has returned an error.
 func (r *Run) ErrorOutput() string {
-	return string(r.errput)
+	return r.errput
 }
 
 // Events returns a channel that streams the gptscript events as they occur as Frames.
@@ -89,8 +82,9 @@ func (r *Run) Close() error {
 		return nil
 	}
 
-	if err := r.wait(); !errors.Is(err, errAbortRun) && !errors.Is(err, context.Canceled) && !errors.As(err, new(*exec.ExitError)) {
-		return err
+	r.wait()
+	if !errors.Is(r.err, errAbortRun) && !errors.Is(r.err, context.Canceled) && !errors.As(r.err, new(*exec.ExitError)) {
+		return r.err
 	}
 
 	return nil
@@ -148,114 +142,6 @@ func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
 	return run, run.request(ctx, payload)
 }
 
-func (r *Run) readEvents(ctx context.Context, events io.Reader) {
-	defer close(r.events)
-
-	var (
-		err  error
-		frag []byte
-
-		b = make([]byte, 64*1024)
-	)
-	for n := 0; n != 0 || err == nil; n, err = events.Read(b) {
-		if !r.opts.IncludeEvents {
-			continue
-		}
-
-		for _, line := range bytes.Split(append(frag, b[:n]...), []byte("\n\n")) {
-			if line = bytes.TrimSpace(line); len(line) == 0 {
-				frag = frag[:0]
-				continue
-			}
-
-			var event Frame
-			if err := json.Unmarshal(line, &event); err != nil {
-				slog.Debug("failed to unmarshal event", "error", err, "event", string(b))
-				frag = line[:]
-				continue
-			}
-
-			select {
-			case <-ctx.Done():
-				return
-			case r.events <- event:
-				frag = frag[:0]
-			}
-		}
-	}
-
-	if err != nil && !errors.Is(err, io.EOF) {
-		slog.Debug("failed to read events", "error", err)
-		r.err = fmt.Errorf("failed to read events: error: %w, stderr: %s", err, string(r.errput))
-	}
-}
-
-func (r *Run) readAllOutput() error {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	if r.complete {
-		return nil
-	}
-	r.complete = true
-
-	done := true
-	errChan := make(chan error)
-	go func() {
-		var err error
-		r.errput, err = io.ReadAll(r.stderr)
-		errChan <- err
-	}()
-
-	go func() {
-		var err error
-		r.output, err = io.ReadAll(r.stdout)
-		errChan <- err
-	}()
-
-	for range 2 {
-		err := <-errChan
-		if err != nil {
-			r.err = fmt.Errorf("failed to read output: %w", err)
-		}
-	}
-
-	if isObject(r.output) {
-		var chatOutput map[string]any
-		if err := json.Unmarshal(r.output, &chatOutput); err != nil {
-			r.state = Error
-			r.err = fmt.Errorf("failed to parse chat output: %w", err)
-		}
-
-		chatState, err := json.Marshal(chatOutput["state"])
-		if err != nil {
-			r.state = Error
-			r.err = fmt.Errorf("failed to process chat state: %w", err)
-		}
-		r.chatState = string(chatState)
-
-		if content, ok := chatOutput["content"].(string); ok {
-			r.output = []byte(content)
-		}
-
-		done, _ = chatOutput["done"].(bool)
-		r.rawOutput = chatOutput
-	} else {
-		if unquoted, err := strconv.Unquote(string(r.output)); err == nil {
-			r.output = []byte(unquoted)
-		}
-	}
-
-	if r.err != nil {
-		r.state = Error
-	} else if done {
-		r.state = Finished
-	} else {
-		r.state = Continue
-	}
-
-	return r.wait()
-}
-
 func (r *Run) request(ctx context.Context, payload any) (err error) {
 	var (
 		req               *http.Request
@@ -301,52 +187,35 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 	}
 
 	r.state = Running
-
-	stdout, stdoutWriter := io.Pipe()
-	stderr, stderrWriter := io.Pipe()
-	eventsRead, eventsWrite := io.Pipe()
-
-	r.stdout = stdout
-	r.stderr = stderr
-
 	r.events = make(chan Frame, 100)
-	go r.readEvents(cancelCtx, eventsRead)
-
+	r.lock.Lock()
 	go func() {
 		var (
 			err  error
 			frag []byte
+
+			done = true
 			buf  = make([]byte, 64*1024)
 		)
-		bufferedStdout := bufio.NewWriter(stdoutWriter)
-		bufferedStderr := bufio.NewWriter(stderrWriter)
 		defer func() {
-			eventsWrite.Close()
-
-			bufferedStderr.Flush()
-			stderrWriter.Close()
-
-			bufferedStdout.Flush()
-			stdoutWriter.Close()
-
-			cancel(r.err)
-
 			resp.Body.Close()
+			close(r.events)
+			cancel(r.err)
+			r.wait()
+			r.lock.Unlock()
 		}()
 
 		for n := 0; n != 0 || err == nil; n, err = resp.Body.Read(buf) {
 			for _, line := range bytes.Split(bytes.TrimSpace(append(frag, buf[:n]...)), []byte("\n\n")) {
 				line = bytes.TrimSpace(bytes.TrimPrefix(line, []byte("data: ")))
-				if len(line) == 0 {
+				if len(line) == 0 || bytes.Equal(line, []byte("[DONE]")) {
 					frag = frag[:0]
 					continue
 				}
-				if bytes.Equal(line, []byte("[DONE]")) {
-					return
-				}
 
 				// Is this a JSON object?
-				if err := json.Unmarshal(line, &[]map[string]any{make(map[string]any)}[0]); err != nil {
+				var m map[string]any
+				if err := json.Unmarshal(line, &m); err != nil {
 					// If not, then wait until we get the rest of the output.
 					frag = line[:]
 					continue
@@ -354,26 +223,63 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 
 				frag = frag[:0]
 
-				if bytes.HasPrefix(line, []byte(`{"stdout":`)) {
-					_, err = bufferedStdout.Write(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte(`{"stdout":`)), []byte("}")))
-					if err != nil {
+				if out, ok := m["stdout"]; ok {
+					switch out := out.(type) {
+					case string:
+						if unquoted, err := strconv.Unquote(out); err == nil {
+							r.output = unquoted
+						} else {
+							r.output = out
+						}
+					case map[string]any:
+						if r.basicCommand {
+							b, err := json.Marshal(out)
+							if err != nil {
+								r.state = Error
+								r.err = fmt.Errorf("failed to process basic command output: %w", err)
+								return
+							}
+
+							r.output = string(b)
+						}
+						chatState, err := json.Marshal(out["state"])
+						if err != nil {
+							r.state = Error
+							r.err = fmt.Errorf("failed to process chat state: %w", err)
+						}
+						r.chatState = string(chatState)
+
+						if content, ok := out["content"].(string); ok {
+							r.output = content
+						}
+
+						done, _ = out["done"].(bool)
+						r.rawOutput = out
+					default:
 						r.state = Error
-						r.err = fmt.Errorf("failed to write stdout: %w", err)
+						r.err = fmt.Errorf("failed to process stdout, invalid type: %T", out)
 						return
 					}
-				} else if bytes.HasPrefix(line, []byte(`{"stderr":`)) {
-					_, err = bufferedStderr.Write(bytes.TrimSuffix(bytes.TrimPrefix(line, []byte(`{"stderr":`)), []byte("}")))
-					if err != nil {
+				} else if stderr, ok := m["stderr"]; ok {
+					switch out := stderr.(type) {
+					case string:
+						if unquoted, err := strconv.Unquote(out); err == nil {
+							r.errput = unquoted
+						} else {
+							r.errput = out
+						}
+					default:
 						r.state = Error
-						r.err = fmt.Errorf("failed to write stderr: %w", err)
-						return
+						r.err = fmt.Errorf("failed to process stderr, invalid type: %T", out)
 					}
 				} else {
-					_, err = eventsWrite.Write(append(line, '\n', '\n'))
-					if err != nil {
-						r.state = Error
-						r.err = fmt.Errorf("failed to write events: %w", err)
-						return
+					if r.opts.IncludeEvents {
+						var event Frame
+						if err := json.Unmarshal(line, &event); err != nil {
+							slog.Debug("failed to unmarshal event", "error", err, "event", string(line))
+						}
+
+						r.events <- event
 					}
 				}
 			}
@@ -383,20 +289,24 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 			slog.Debug("failed to read events from response", "error", err)
 			r.err = fmt.Errorf("failed to read events: %w", err)
 		}
+
+		if r.err != nil {
+			r.state = Error
+		} else if done {
+			r.state = Finished
+		} else {
+			r.state = Continue
+		}
 	}()
 
-	r.wait = func() error {
+	r.wait = func() {
 		<-cancelCtx.Done()
-		stdout.Close()
-		stderr.Close()
-		eventsRead.Close()
 		if err := context.Cause(cancelCtx); !errors.Is(err, context.Canceled) && r.err == nil {
 			r.state = Error
 			r.err = err
 		} else if r.state != Continue {
 			r.state = Finished
 		}
-		return r.err
 	}
 
 	return nil
@@ -416,69 +326,9 @@ const (
 	Error    RunState = "error"
 )
 
-type runSubCommand struct {
-	Run
-}
-
-func (r *runSubCommand) Bytes() ([]byte, error) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-	if r.complete {
-		return r.output, r.err
-	}
-	r.complete = true
-
-	errChan := make(chan error)
-	go func() {
-		var err error
-		r.errput, err = io.ReadAll(r.stderr)
-		if unquoted, err := strconv.Unquote(string(r.errput)); err == nil {
-			r.errput = []byte(unquoted)
-		}
-		errChan <- err
-	}()
-
-	go func() {
-		var err error
-		r.output, err = io.ReadAll(r.stdout)
-		if unquoted, err := strconv.Unquote(string(r.output)); err == nil {
-			r.output = []byte(unquoted)
-		}
-		errChan <- err
-	}()
-
-	for range 2 {
-		err := <-errChan
-		if err != nil {
-			r.err = fmt.Errorf("failed to read output: %w", err)
-		}
-	}
-
-	if r.err != nil {
-		r.state = Error
-	} else {
-		r.state = Finished
-	}
-
-	if err := r.wait(); err != nil {
-		return nil, err
-	}
-
-	return r.output, r.err
-}
-
-func (r *runSubCommand) Text() (string, error) {
-	output, err := r.Bytes()
-	return string(output), err
-}
-
 type requestPayload struct {
 	Content string `json:"content"`
 	File    string `json:"file"`
 	Input   string `json:"input"`
 	Options `json:",inline"`
-}
-
-func isObject(b []byte) bool {
-	return len(b) > 0 && b[0] == '{'
 }
