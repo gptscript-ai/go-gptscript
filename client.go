@@ -27,13 +27,14 @@ const relativeToBinaryPath = "<me>"
 type Client interface {
 	Run(context.Context, string, Options) (*Run, error)
 	Evaluate(context.Context, Options, ...fmt.Stringer) (*Run, error)
-	Parse(ctx context.Context, fileName string) ([]Node, error)
-	ParseTool(ctx context.Context, toolDef string) ([]Node, error)
-	Version(ctx context.Context) (string, error)
-	Fmt(ctx context.Context, nodes []Node) (string, error)
-	ListTools(ctx context.Context) (string, error)
-	ListModels(ctx context.Context) ([]string, error)
-	Confirm(ctx context.Context, resp AuthResponse) error
+	Parse(context.Context, string) ([]Node, error)
+	ParseTool(context.Context, string) ([]Node, error)
+	Version(context.Context) (string, error)
+	Fmt(context.Context, []Node) (string, error)
+	ListTools(context.Context) (string, error)
+	ListModels(context.Context) ([]string, error)
+	Confirm(context.Context, AuthResponse) error
+	PromptResponse(context.Context, PromptResponse) error
 	Close()
 }
 
@@ -205,6 +206,11 @@ func (c *client) ListModels(ctx context.Context) ([]string, error) {
 
 func (c *client) Confirm(ctx context.Context, resp AuthResponse) error {
 	_, err := c.runBasicCommand(ctx, "confirm/"+resp.ID, resp)
+	return err
+}
+
+func (c *client) PromptResponse(ctx context.Context, resp PromptResponse) error {
+	_, err := c.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Response)
 	return err
 }
 
