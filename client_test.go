@@ -817,7 +817,7 @@ func TestPrompt(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true}, tools...)
+	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true, Prompt: true}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -859,8 +859,8 @@ func TestPrompt(t *testing.T) {
 	}
 
 	if err = c.PromptResponse(context.Background(), PromptResponse{
-		ID:       promptFrame.ID,
-		Response: map[string]string{promptFrame.Fields[0]: "Clicky"},
+		ID:        promptFrame.ID,
+		Responses: map[string]string{promptFrame.Fields[0]: "Clicky"},
 	}); err != nil {
 		t.Errorf("Error responding: %v", err)
 	}
@@ -889,6 +889,44 @@ func TestPrompt(t *testing.T) {
 
 	if len(run.ErrorOutput()) != 0 {
 		t.Errorf("Should have no stderr output: %v", run.ErrorOutput())
+	}
+}
+
+func TestPromptWithoutPromptAllowed(t *testing.T) {
+	tools := []fmt.Stringer{
+		&ToolDef{
+			Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
+			Tools:        []string{"sys.prompt"},
+		},
+	}
+
+	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true}, tools...)
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	// Wait for the prompt event
+	var promptFrame *PromptFrame
+	for e := range run.Events() {
+		if e.Prompt != nil {
+			if e.Prompt.Type == EventTypePrompt {
+				promptFrame = e.Prompt
+				break
+			}
+		}
+	}
+
+	if promptFrame != nil {
+		t.Errorf("Prompt call event shouldn't happen")
+	}
+
+	_, err = run.Text()
+	if err == nil || !strings.Contains(err.Error(), "prompt event occurred") {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if run.State() != Error {
+		t.Errorf("Unexpected state: %v", run.State())
 	}
 }
 

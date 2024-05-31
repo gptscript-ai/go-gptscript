@@ -10,4 +10,5 @@ type Options struct {
 	Workspace     string `json:"workspace"`
 	ChatState     string `json:"chatState"`
 	IncludeEvents bool   `json:"includeEvents"`
+	Prompt        bool   `json:"prompt"`
 }

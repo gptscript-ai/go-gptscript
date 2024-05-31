@@ -33,6 +33,7 @@ None of the options is required, and the defaults will reduce the number of call
 - `inlcudeEvents`: Whether to include the streaming of events. Default (false). Note that if this is true, you must stream the events. See below for details.
 - `chatState`: The chat state to continue, or null to start a new chat and return the state
 - `confirm`: Prompt before running potentially dangerous commands
+- `prompt`: Allow prompting of the user
 
 ## Functions
 
@@ -298,7 +299,7 @@ func runFileWithConfirm(ctx context.Context) (string, error) {
 	}
 
 	for event := range run.Events() {
-		if event.Type == gptscript.EventTypeCallConfirm {
+		if event.Call != nil && event.Call.Type == gptscript.EventTypeCallConfirm {
 			// event.Tool has the information on the command being run.
 			// and event.Input will have the input to the command being run.
 
@@ -319,6 +320,60 @@ func runFileWithConfirm(ctx context.Context) (string, error) {
 }
 ```
 
+### Prompt
+
+Using the `Prompt: true` option allows a script to prompt a user for input. In order to do this, a caller should look for the `Prompt` event. This also means that `IncludeEvent` should be `true`. Note that if a `Prompt` event occurs when it has not explicitly been allowed, then the run will error.
+
+```go
+package main
+
+import (
+	"context"
+
+	"github.com/gptscript-ai/go-gptscript"
+)
+
+func runFileWithPrompt(ctx context.Context) (string, error) {
+	opts := gptscript.Options{
+		DisableCache: &[]bool{true}[0],
+		Input: "--input hello",
+		Prompt: true,
+		IncludeEvents: true,
+	}
+
+	client, err := gptscript.NewClient()
+	if err != nil {
+		return "", err
+	}
+	defer client.Close()
+
+	run, err := client.Run(ctx, "./hello.gpt",  opts)
+	if err != nil {
+		return "", err
+	}
+
+	for event := range run.Events() {
+		if event.Prompt != nil {
+			// event.Prompt has the information to prompt the user.
+
+			err = client.PromptResponse(ctx, gptscript.PromptResponse{
+				ID: event.Prompt.ID,
+				// Responses is a map[string]string of Fields to values
+				Responses: map[string]string{
+					event.Prompt.Fields[0]: "Some Value",
+				},
+			})
+			if err != nil {
+				// Handle error
+			}
+		}
+
+		// Process event...
+	}
+
+	return run.Text()
+}
+```
 
 ## Types
 
