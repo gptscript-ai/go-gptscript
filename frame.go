@@ -1,6 +1,9 @@
 package gptscript
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type ToolCategory string
 
@@ -102,4 +105,10 @@ type PromptFrame struct {
 	Message   string    `json:"message,omitempty"`
 	Fields    []string  `json:"fields,omitempty"`
 	Sensitive bool      `json:"sensitive,omitempty"`
+}
+
+func (p *PromptFrame) String() string {
+	return fmt.Sprintf(`Message: %s
+Fields: %v
+Sensitive: %v`, p.Message, p.Fields, p.Sensitive)
 }

@@ -273,12 +273,21 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 						r.err = fmt.Errorf("failed to process stderr, invalid type: %T", out)
 					}
 				} else {
-					if r.opts.IncludeEvents {
-						var event Frame
-						if err := json.Unmarshal(line, &event); err != nil {
-							slog.Debug("failed to unmarshal event", "error", err, "event", string(line))
-						}
+					var event Frame
+					if err := json.Unmarshal(line, &event); err != nil {
+						slog.Debug("failed to unmarshal event", "error", err, "event", string(line))
+					}
 
+					if event.Prompt != nil && !r.opts.Prompt {
+						r.state = Error
+						r.err = fmt.Errorf("prompt event occurred when prompt was not allowed: %s", event.Prompt)
+						// Ignore the error because it is the same as the above error.
+						_ = r.Close()
+
+						return
+					}
+
+					if r.opts.IncludeEvents {
 						r.events <- event
 					}
 				}
@@ -304,7 +313,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		if err := context.Cause(cancelCtx); !errors.Is(err, context.Canceled) && r.err == nil {
 			r.state = Error
 			r.err = err
-		} else if r.state != Continue {
+		} else if r.state != Continue && r.state != Error {
 			r.state = Finished
 		}
 	}

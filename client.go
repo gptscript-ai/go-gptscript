@@ -210,7 +210,7 @@ func (c *client) Confirm(ctx context.Context, resp AuthResponse) error {
 }
 
 func (c *client) PromptResponse(ctx context.Context, resp PromptResponse) error {
-	_, err := c.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Response)
+	_, err := c.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Responses)
 	return err
 }
 
