@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os/exec"
 	"strconv"
@@ -26,10 +27,14 @@ type Run struct {
 	wait                                func()
 	basicCommand                        bool
 
-	rawOutput      map[string]any
-	output, errput string
-	events         chan Frame
-	lock           sync.Mutex
+	program           *Program
+	callsLock         sync.RWMutex
+	calls             map[string]CallFrame
+	parentCallFrameID string
+	rawOutput         map[string]any
+	output, errput    string
+	events            chan Frame
+	lock              sync.Mutex
 }
 
 // Text returns the text output of the gptscript. It blocks until the output is ready.
@@ -57,6 +62,49 @@ func (r *Run) State() RunState {
 // Err returns the error that caused the gptscript to fail, if any.
 func (r *Run) Err() error {
 	return r.err
+}
+
+// Program returns the gptscript program for the run.
+func (r *Run) Program() *Program {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	return r.program
+}
+
+// RespondingTool returns the name of the tool that produced the output.
+func (r *Run) RespondingTool() Tool {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if r.program == nil {
+		return Tool{}
+	}
+
+	s, ok := r.rawOutput["toolID"].(string)
+	if !ok {
+		return Tool{}
+	}
+
+	return r.program.ToolSet[s]
+}
+
+// Calls will return a flattened array of the calls for this run.
+func (r *Run) Calls() map[string]CallFrame {
+	r.callsLock.RLock()
+	defer r.callsLock.RUnlock()
+	return maps.Clone(r.calls)
+}
+
+// ParentCallFrame returns the CallFrame for the top-level or "parent" call. The boolean indicates whether there is a parent CallFrame.
+func (r *Run) ParentCallFrame() (CallFrame, bool) {
+	r.callsLock.RLock()
+	defer r.callsLock.RUnlock()
+
+	if r.parentCallFrameID == "" {
+		return CallFrame{}, false
+	}
+
+	return r.calls[r.parentCallFrameID], true
 }
 
 // ErrorOutput returns the stderr output of the gptscript.
@@ -143,6 +191,10 @@ func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
 }
 
 func (r *Run) request(ctx context.Context, payload any) (err error) {
+	if r.state.IsTerminal() {
+		return fmt.Errorf("run is in terminal state and cannot be run again: state %q", r.state)
+	}
+
 	var (
 		req               *http.Request
 		url               = fmt.Sprintf("%s/%s", r.url, r.requestPath)
@@ -204,6 +256,10 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 			r.wait()
 			r.lock.Unlock()
 		}()
+
+		r.callsLock.Lock()
+		r.calls = make(map[string]CallFrame)
+		r.callsLock.Unlock()
 
 		for n := 0; n != 0 || err == nil; n, err = resp.Body.Read(buf) {
 			for _, line := range bytes.Split(bytes.TrimSpace(append(frag, buf[:n]...)), []byte("\n\n")) {
@@ -285,6 +341,19 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 						_ = r.Close()
 
 						return
+					}
+
+					if event.Call != nil {
+						r.callsLock.Lock()
+						r.calls[event.Call.ID] = *event.Call
+						if r.parentCallFrameID == "" && event.Call.ParentID == "" {
+							r.parentCallFrameID = event.Call.ID
+						}
+						r.callsLock.Unlock()
+					} else if event.Run != nil && event.Run.Type == EventTypeRunStart {
+						r.callsLock.Lock()
+						r.program = &event.Run.Program
+						r.callsLock.Unlock()
 					}
 
 					if r.opts.IncludeEvents {
