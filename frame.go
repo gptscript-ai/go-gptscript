@@ -1,12 +1,33 @@
 package gptscript
 
-import (
-	"time"
+import "time"
+
+type ToolCategory string
+
+type EventType string
+
+const (
+	CredentialToolCategory ToolCategory = "credential"
+	ContextToolCategory    ToolCategory = "context"
+	NoCategory             ToolCategory = ""
+
+	EventTypeRunStart     EventType = "runStart"
+	EventTypeCallStart    EventType = "callStart"
+	EventTypeCallContinue EventType = "callContinue"
+	EventTypeCallSubCalls EventType = "callSubCalls"
+	EventTypeCallProgress EventType = "callProgress"
+	EventTypeChat         EventType = "callChat"
+	EventTypeCallConfirm  EventType = "callConfirm"
+	EventTypeCallFinish   EventType = "callFinish"
+	EventTypeRunFinish    EventType = "runFinish"
+
+	EventTypePrompt EventType = "prompt"
 )
 
 type Frame struct {
-	Run  *RunFrame  `json:"run,omitempty"`
-	Call *CallFrame `json:"call,omitempty"`
+	Run    *RunFrame    `json:"run,omitempty"`
+	Call   *CallFrame   `json:"call,omitempty"`
+	Prompt *PromptFrame `json:"prompt,omitempty"`
 }
 
 type RunFrame struct {
@@ -74,24 +95,11 @@ type InputContext struct {
 	Content string `json:"content,omitempty"`
 }
 
-type ToolCategory string
-
-const (
-	CredentialToolCategory ToolCategory = "credential"
-	ContextToolCategory    ToolCategory = "context"
-	NoCategory             ToolCategory = ""
-)
-
-type EventType string
-
-const (
-	EventTypeRunStart     EventType = "runStart"
-	EventTypeCallStart    EventType = "callStart"
-	EventTypeCallContinue EventType = "callContinue"
-	EventTypeCallSubCalls EventType = "callSubCalls"
-	EventTypeCallProgress EventType = "callProgress"
-	EventTypeChat         EventType = "callChat"
-	EventTypeCallConfirm  EventType = "callConfirm"
-	EventTypeCallFinish   EventType = "callFinish"
-	EventTypeRunFinish    EventType = "runFinish"
-)
+type PromptFrame struct {
+	ID        string    `json:"id,omitempty"`
+	Type      EventType `json:"type,omitempty"`
+	Time      time.Time `json:"time,omitempty"`
+	Message   string    `json:"message,omitempty"`
+	Fields    []string  `json:"fields,omitempty"`
+	Sensitive bool      `json:"sensitive,omitempty"`
+}
