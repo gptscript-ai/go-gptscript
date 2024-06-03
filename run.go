@@ -154,22 +154,24 @@ func (r *Run) ChatState() string {
 // NextChat will pass input and create the next run in a chat.
 // The new Run will be returned.
 func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
-	if r.state != Creating && r.state != Continue {
-		return nil, fmt.Errorf("run must be in creating or continue state not %q", r.state)
+	if r.state != Creating && r.state != Continue && r.state != Error {
+		return nil, fmt.Errorf("run must be in creating, continue, or error state not %q", r.state)
 	}
 
 	run := &Run{
 		url:         r.url,
 		requestPath: r.requestPath,
 		state:       Creating,
-		chatState:   r.chatState,
 		toolPath:    r.toolPath,
 		content:     r.content,
 		opts:        r.opts,
 	}
+
 	run.opts.Input = input
-	if run.chatState != "" {
-		run.opts.ChatState = run.chatState
+	if r.chatState != "" && r.state != Error {
+		// If the previous run errored, then don't update the chat state.
+		// opts.ChatState will be the last chat state where an error did not occur.
+		run.opts.ChatState = r.chatState
 	}
 
 	var payload any
@@ -350,10 +352,15 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 							r.parentCallFrameID = event.Call.ID
 						}
 						r.callsLock.Unlock()
-					} else if event.Run != nil && event.Run.Type == EventTypeRunStart {
-						r.callsLock.Lock()
-						r.program = &event.Run.Program
-						r.callsLock.Unlock()
+					} else if event.Run != nil {
+						if event.Run.Type == EventTypeRunStart {
+							r.callsLock.Lock()
+							r.program = &event.Run.Program
+							r.callsLock.Unlock()
+						} else if event.Run.Type == EventTypeRunFinish && event.Run.Error != "" {
+							r.state = Error
+							r.err = fmt.Errorf(event.Run.Error)
+						}
 					}
 
 					if r.opts.IncludeEvents {
