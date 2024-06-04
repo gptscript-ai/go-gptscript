@@ -113,6 +113,10 @@ func TestSimpleEvaluate(t *testing.T) {
 	if !strings.Contains(out, "Washington") {
 		t.Errorf("Unexpected output: %s", out)
 	}
+
+	if run.Program() == nil {
+		t.Error("Run program not set")
+	}
 }
 
 func TestEvaluateWithContext(t *testing.T) {
