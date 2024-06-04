@@ -16,9 +16,9 @@ To use the module, you need to first set the OPENAI_API_KEY environment variable
 
 Additionally, you need the `gptscript` binary. You can install it on your system using the [installation instructions](https://github.com/gptscript-ai/gptscript?tab=readme-ov-file#1-install-the-latest-release). The binary can be on the PATH, or the `GPTSCRIPT_BIN` environment variable can be used to specify its location.
 
-## Client
+## GPTScript
 
-The client allows the caller to run gptscript files, tools, and other operations (see below). There are currently no options for this client, so calling `NewClient()` is all you need. Although, the intention is that a single client is all you need for the life of your application, you should call `Close()` on the client when you are done.
+The GPTScript instance allows the caller to run gptscript files, tools, and other operations (see below). There are currently no options for this instance, so calling `NewGPTScript()` is all you need. Although, the intention is that a single GPTScript instance is all you need for the life of your application, you should call `Close()` on the instance when you are done.
 
 ## Options
 
@@ -54,12 +54,12 @@ import (
 )
 
 func listTools(ctx context.Context) (string, error) {
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
-	return client.ListTools(ctx)
+	defer g.Close()
+	return g.ListTools(ctx)
 }
 ```
 
@@ -79,12 +79,12 @@ import (
 )
 
 func listModels(ctx context.Context) ([]string, error) {
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
-	return client.ListModels(ctx)
+	defer g.Close()
+	return g.ListModels(ctx)
 }
 ```
 
@@ -102,13 +102,13 @@ import (
 )
 
 func parse(ctx context.Context, fileName string) ([]gptscript.Node, error) {
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	return client.Parse(ctx, fileName)
+	return g.Parse(ctx, fileName)
 }
 ```
 
@@ -126,13 +126,13 @@ import (
 )
 
 func parseTool(ctx context.Context, contents string) ([]gptscript.Node, error) {
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return nil, err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	return client.ParseTool(ctx, contents)
+	return g.ParseTool(ctx, contents)
 }
 ```
 
@@ -150,13 +150,13 @@ import (
 )
 
 func parse(ctx context.Context, nodes []gptscript.Node) (string, error) {
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	return client.Fmt(ctx, nodes)
+	return g.Fmt(ctx, nodes)
 }
 ```
 
@@ -178,13 +178,13 @@ func runTool(ctx context.Context) (string, error) {
 		Instructions: "who was the president of the united states in 1928?",
 	}
 
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	run, err := client.Evaluate(ctx, gptscript.Options{}, t)
+	run, err := g.Evaluate(ctx, gptscript.Options{}, t)
 	if err != nil {
 		return "", err
 	}
@@ -212,13 +212,13 @@ func runFile(ctx context.Context) (string, error) {
 		Input: "--input hello",
 	}
 
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	run, err := client.Run(ctx, "./hello.gpt",  opts)
+	run, err := g.Run(ctx, "./hello.gpt",  opts)
 	if err != nil {
 		return "", err
 	}
@@ -247,13 +247,13 @@ func streamExecTool(ctx context.Context) error {
 		Input:         "--input world",
 	}
 
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	run, err := client.Run(ctx, "./hello.gpt", opts)
+	run, err := g.Run(ctx, "./hello.gpt", opts)
 	if err != nil {
 		return err
 	}
@@ -288,13 +288,13 @@ func runFileWithConfirm(ctx context.Context) (string, error) {
 		IncludeEvents: true,
 	}
 
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	run, err := client.Run(ctx, "./hello.gpt",  opts)
+	run, err := g.Run(ctx, "./hello.gpt",  opts)
 	if err != nil {
 		return "", err
 	}
@@ -304,7 +304,7 @@ func runFileWithConfirm(ctx context.Context) (string, error) {
 			// event.Tool has the information on the command being run.
 			// and event.Input will have the input to the command being run.
 
-			err = client.Confirm(ctx, gptscript.AuthResponse{
+			err = g.Confirm(ctx, gptscript.AuthResponse{
 				ID: event.ID,
 				Accept: true, // Or false if not allowed.
 				Message: "", // A message explaining why the command is not allowed (ignored if allowed).
@@ -342,13 +342,13 @@ func runFileWithPrompt(ctx context.Context) (string, error) {
 		IncludeEvents: true,
 	}
 
-	client, err := gptscript.NewClient()
+	g, err := gptscript.NewGPTScript()
 	if err != nil {
 		return "", err
 	}
-	defer client.Close()
+	defer g.Close()
 
-	run, err := client.Run(ctx, "./hello.gpt",  opts)
+	run, err := g.Run(ctx, "./hello.gpt",  opts)
 	if err != nil {
 		return "", err
 	}
@@ -357,7 +357,7 @@ func runFileWithPrompt(ctx context.Context) (string, error) {
 		if event.Prompt != nil {
 			// event.Prompt has the information to prompt the user.
 
-			err = client.PromptResponse(ctx, gptscript.PromptResponse{
+			err = g.PromptResponse(ctx, gptscript.PromptResponse{
 				ID: event.Prompt.ID,
 				// Responses is a map[string]string of Fields to values
 				Responses: map[string]string{
