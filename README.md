@@ -34,6 +34,7 @@ None of the options is required, and the defaults will reduce the number of call
 - `chatState`: The chat state to continue, or null to start a new chat and return the state
 - `confirm`: Prompt before running potentially dangerous commands
 - `prompt`: Allow prompting of the user
+- `env`: Extra environment variables to pass to the script in the form `KEY=VAL`
 
 ## Functions
 

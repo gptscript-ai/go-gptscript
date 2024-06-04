@@ -119,7 +119,6 @@ func (c *client) Evaluate(ctx context.Context, opts Options, tools ...fmt.String
 		state:       Creating,
 		opts:        opts,
 		content:     concatTools(tools),
-		chatState:   opts.ChatState,
 	}).NextChat(ctx, opts.Input)
 }
 
@@ -130,7 +129,6 @@ func (c *client) Run(ctx context.Context, toolPath string, opts Options) (*Run, 
 		state:       Creating,
 		opts:        opts,
 		toolPath:    toolPath,
-		chatState:   opts.ChatState,
 	}).NextChat(ctx, opts.Input)
 }
 
