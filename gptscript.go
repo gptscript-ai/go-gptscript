@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,13 +19,14 @@ import (
 var (
 	serverProcess       *exec.Cmd
 	serverProcessCancel context.CancelFunc
-	clientCount         int
+	gptscriptCount      int
+	serverURL           string
 	lock                sync.Mutex
 )
 
 const relativeToBinaryPath = "<me>"
 
-type Client interface {
+type GPTScript interface {
 	Run(context.Context, string, Options) (*Run, error)
 	Evaluate(context.Context, Options, ...fmt.Stringer) (*Run, error)
 	Parse(context.Context, string) ([]Node, error)
@@ -38,21 +40,31 @@ type Client interface {
 	Close()
 }
 
-type client struct {
-	gptscriptURL string
+type gptscript struct {
+	url string
 }
 
-func NewClient() (Client, error) {
+func NewGPTScript() (GPTScript, error) {
 	lock.Lock()
 	defer lock.Unlock()
-	clientCount++
-
-	serverURL := os.Getenv("GPTSCRIPT_URL")
-	if serverURL == "" {
-		serverURL = "127.0.0.1:9090"
-	}
+	gptscriptCount++
 
 	if serverProcessCancel == nil && os.Getenv("GPTSCRIPT_DISABLE_SERVER") != "true" {
+		serverURL = os.Getenv("GPTSCRIPT_URL")
+		if serverURL == "" {
+			l, err := net.Listen("tcp", "127.0.0.1:0")
+			if err != nil {
+				slog.Debug("failed to start gptscript listener", "err", err)
+				return nil, fmt.Errorf("failed to start gptscript: %w", err)
+			}
+
+			serverURL = l.Addr().String()
+			if err = l.Close(); err != nil {
+				slog.Debug("failed to close gptscript listener", "err", err)
+				return nil, fmt.Errorf("failed to start gptscript: %w", err)
+			}
+		}
+
 		ctx, cancel := context.WithCancel(context.Background())
 
 		in, _ := io.Pipe()
@@ -77,7 +89,7 @@ func NewClient() (Client, error) {
 			return nil, fmt.Errorf("failed to wait for gptscript to be ready: %w", err)
 		}
 	}
-	return &client{gptscriptURL: "http://" + serverURL}, nil
+	return &gptscript{url: "http://" + serverURL}, nil
 }
 
 func waitForServerReady(ctx context.Context, serverURL string) error {
@@ -101,20 +113,20 @@ func waitForServerReady(ctx context.Context, serverURL string) error {
 	}
 }
 
-func (c *client) Close() {
+func (g *gptscript) Close() {
 	lock.Lock()
 	defer lock.Unlock()
-	clientCount--
+	gptscriptCount--
 
-	if clientCount == 0 && serverProcessCancel != nil {
+	if gptscriptCount == 0 && serverProcessCancel != nil {
 		serverProcessCancel()
 		_ = serverProcess.Wait()
 	}
 }
 
-func (c *client) Evaluate(ctx context.Context, opts Options, tools ...fmt.Stringer) (*Run, error) {
+func (g *gptscript) Evaluate(ctx context.Context, opts Options, tools ...fmt.Stringer) (*Run, error) {
 	return (&Run{
-		url:         c.gptscriptURL,
+		url:         g.url,
 		requestPath: "evaluate",
 		state:       Creating,
 		opts:        opts,
@@ -122,9 +134,9 @@ func (c *client) Evaluate(ctx context.Context, opts Options, tools ...fmt.String
 	}).NextChat(ctx, opts.Input)
 }
 
-func (c *client) Run(ctx context.Context, toolPath string, opts Options) (*Run, error) {
+func (g *gptscript) Run(ctx context.Context, toolPath string, opts Options) (*Run, error) {
 	return (&Run{
-		url:         c.gptscriptURL,
+		url:         g.url,
 		requestPath: "run",
 		state:       Creating,
 		opts:        opts,
@@ -133,8 +145,8 @@ func (c *client) Run(ctx context.Context, toolPath string, opts Options) (*Run, 
 }
 
 // Parse will parse the given file into an array of Nodes.
-func (c *client) Parse(ctx context.Context, fileName string) ([]Node, error) {
-	out, err := c.runBasicCommand(ctx, "parse", map[string]any{"file": fileName})
+func (g *gptscript) Parse(ctx context.Context, fileName string) ([]Node, error) {
+	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"file": fileName})
 	if err != nil {
 		return nil, err
 	}
@@ -148,8 +160,8 @@ func (c *client) Parse(ctx context.Context, fileName string) ([]Node, error) {
 }
 
 // ParseTool will parse the given string into a tool.
-func (c *client) ParseTool(ctx context.Context, toolDef string) ([]Node, error) {
-	out, err := c.runBasicCommand(ctx, "parse", map[string]any{"content": toolDef})
+func (g *gptscript) ParseTool(ctx context.Context, toolDef string) ([]Node, error) {
+	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"content": toolDef})
 	if err != nil {
 		return nil, err
 	}
@@ -163,8 +175,8 @@ func (c *client) ParseTool(ctx context.Context, toolDef string) ([]Node, error) 
 }
 
 // Fmt will format the given nodes into a string.
-func (c *client) Fmt(ctx context.Context, nodes []Node) (string, error) {
-	out, err := c.runBasicCommand(ctx, "fmt", Document{Nodes: nodes})
+func (g *gptscript) Fmt(ctx context.Context, nodes []Node) (string, error) {
+	out, err := g.runBasicCommand(ctx, "fmt", Document{Nodes: nodes})
 	if err != nil {
 		return "", err
 	}
@@ -173,8 +185,8 @@ func (c *client) Fmt(ctx context.Context, nodes []Node) (string, error) {
 }
 
 // Version will return the output of `gptscript --version`
-func (c *client) Version(ctx context.Context) (string, error) {
-	out, err := c.runBasicCommand(ctx, "version", nil)
+func (g *gptscript) Version(ctx context.Context) (string, error) {
+	out, err := g.runBasicCommand(ctx, "version", nil)
 	if err != nil {
 		return "", err
 	}
@@ -183,8 +195,8 @@ func (c *client) Version(ctx context.Context) (string, error) {
 }
 
 // ListTools will list all the available tools.
-func (c *client) ListTools(ctx context.Context) (string, error) {
-	out, err := c.runBasicCommand(ctx, "list-tools", nil)
+func (g *gptscript) ListTools(ctx context.Context) (string, error) {
+	out, err := g.runBasicCommand(ctx, "list-tools", nil)
 	if err != nil {
 		return "", err
 	}
@@ -193,8 +205,8 @@ func (c *client) ListTools(ctx context.Context) (string, error) {
 }
 
 // ListModels will list all the available models.
-func (c *client) ListModels(ctx context.Context) ([]string, error) {
-	out, err := c.runBasicCommand(ctx, "list-models", nil)
+func (g *gptscript) ListModels(ctx context.Context) ([]string, error) {
+	out, err := g.runBasicCommand(ctx, "list-models", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -202,19 +214,19 @@ func (c *client) ListModels(ctx context.Context) ([]string, error) {
 	return strings.Split(strings.TrimSpace(out), "\n"), nil
 }
 
-func (c *client) Confirm(ctx context.Context, resp AuthResponse) error {
-	_, err := c.runBasicCommand(ctx, "confirm/"+resp.ID, resp)
+func (g *gptscript) Confirm(ctx context.Context, resp AuthResponse) error {
+	_, err := g.runBasicCommand(ctx, "confirm/"+resp.ID, resp)
 	return err
 }
 
-func (c *client) PromptResponse(ctx context.Context, resp PromptResponse) error {
-	_, err := c.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Responses)
+func (g *gptscript) PromptResponse(ctx context.Context, resp PromptResponse) error {
+	_, err := g.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Responses)
 	return err
 }
 
-func (c *client) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
+func (g *gptscript) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
 	run := &Run{
-		url:          c.gptscriptURL,
+		url:          g.url,
 		requestPath:  requestPath,
 		state:        Creating,
 		basicCommand: true,

@@ -12,7 +12,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-var c Client
+var g GPTScript
 
 func TestMain(m *testing.M) {
 	if os.Getenv("OPENAI_API_KEY") == "" && os.Getenv("GPTSCRIPT_URL") == "" {
@@ -20,18 +20,35 @@ func TestMain(m *testing.M) {
 	}
 
 	var err error
-	c, err = NewClient()
+	g, err = NewGPTScript()
 	if err != nil {
-		panic(fmt.Sprintf("error creating client: %s", err))
+		panic(fmt.Sprintf("error creating gptscript: %s", err))
 	}
 
 	exitCode := m.Run()
-	c.Close()
+	g.Close()
 	os.Exit(exitCode)
 }
 
+func TestCreateAnotherGPTScript(t *testing.T) {
+	g, err := NewGPTScript()
+	if err != nil {
+		t.Errorf("error creating gptscript: %s", err)
+	}
+	defer g.Close()
+
+	version, err := g.Version(context.Background())
+	if err != nil {
+		t.Errorf("error getting version from second gptscript: %s", err)
+	}
+
+	if !strings.Contains(version, "gptscript version") {
+		t.Errorf("unexpected gptscript version: %s", version)
+	}
+}
+
 func TestVersion(t *testing.T) {
-	out, err := c.Version(context.Background())
+	out, err := g.Version(context.Background())
 	if err != nil {
 		t.Errorf("Error getting version: %v", err)
 	}
@@ -42,7 +59,7 @@ func TestVersion(t *testing.T) {
 }
 
 func TestListTools(t *testing.T) {
-	tools, err := c.ListTools(context.Background())
+	tools, err := g.ListTools(context.Background())
 	if err != nil {
 		t.Errorf("Error listing tools: %v", err)
 	}
@@ -53,7 +70,7 @@ func TestListTools(t *testing.T) {
 }
 
 func TestListModels(t *testing.T) {
-	models, err := c.ListModels(context.Background())
+	models, err := g.ListModels(context.Background())
 	if err != nil {
 		t.Errorf("Error listing models: %v", err)
 	}
@@ -66,7 +83,7 @@ func TestListModels(t *testing.T) {
 func TestAbortRun(t *testing.T) {
 	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := c.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
+	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -90,7 +107,7 @@ func TestAbortRun(t *testing.T) {
 func TestSimpleEvaluate(t *testing.T) {
 	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := c.Evaluate(context.Background(), Options{}, tool)
+	run, err := g.Evaluate(context.Background(), Options{}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -132,7 +149,7 @@ func TestEvaluateWithContext(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
+	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -165,7 +182,7 @@ the response should be in JSON and match the format:
 `,
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{DisableCache: true}, tool)
+	run, err := g.Evaluate(context.Background(), Options{DisableCache: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -201,7 +218,7 @@ func TestEvaluateWithToolList(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -242,7 +259,7 @@ func TestEvaluateWithToolListAndSubTool(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{SubTool: "other"}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{SubTool: "other"}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -261,7 +278,7 @@ func TestStreamEvaluate(t *testing.T) {
 	var eventContent string
 	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true}, tool)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true}, tool)
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
@@ -299,7 +316,7 @@ func TestStreamRun(t *testing.T) {
 	}
 
 	var eventContent string
-	run, err := c.Run(context.Background(), wd+"/test/catcher.gpt", Options{IncludeEvents: true})
+	run, err := g.Run(context.Background(), wd+"/test/catcher.gpt", Options{IncludeEvents: true})
 	if err != nil {
 		t.Fatalf("Error executing file: %v", err)
 	}
@@ -336,7 +353,7 @@ func TestParseSimpleFile(t *testing.T) {
 		t.Fatalf("Error getting working directory: %v", err)
 	}
 
-	tools, err := c.Parse(context.Background(), wd+"/test/test.gpt")
+	tools, err := g.Parse(context.Background(), wd+"/test/test.gpt")
 	if err != nil {
 		t.Errorf("Error parsing file: %v", err)
 	}
@@ -355,7 +372,7 @@ func TestParseSimpleFile(t *testing.T) {
 }
 
 func TestParseTool(t *testing.T) {
-	tools, err := c.ParseTool(context.Background(), "echo hello")
+	tools, err := g.ParseTool(context.Background(), "echo hello")
 	if err != nil {
 		t.Errorf("Error parsing tool: %v", err)
 	}
@@ -374,7 +391,7 @@ func TestParseTool(t *testing.T) {
 }
 
 func TestParseToolWithTextNode(t *testing.T) {
-	tools, err := c.ParseTool(context.Background(), "echo hello\n---\n!markdown\nhello")
+	tools, err := g.ParseTool(context.Background(), "echo hello\n---\n!markdown\nhello")
 	if err != nil {
 		t.Errorf("Error parsing tool: %v", err)
 	}
@@ -435,7 +452,7 @@ func TestFmt(t *testing.T) {
 		},
 	}
 
-	out, err := c.Fmt(context.Background(), nodes)
+	out, err := g.Fmt(context.Background(), nodes)
 	if err != nil {
 		t.Errorf("Error formatting nodes: %v", err)
 	}
@@ -446,7 +463,7 @@ echo hello there
 
 ---
 Name: echo
-Args: input: The string input to echo
+Parameter: input: The string input to echo
 
 #!/bin/bash
 echo hello there
@@ -495,7 +512,7 @@ func TestFmtWithTextNode(t *testing.T) {
 		},
 	}
 
-	out, err := c.Fmt(context.Background(), nodes)
+	out, err := g.Fmt(context.Background(), nodes)
 	if err != nil {
 		t.Errorf("Error formatting nodes: %v", err)
 	}
@@ -509,7 +526,7 @@ echo hello there
 We now echo hello there
 ---
 Name: echo
-Args: input: The string input to echo
+Parameter: input: The string input to echo
 
 #!/bin/bash
 echo hello there
@@ -525,7 +542,7 @@ func TestToolChat(t *testing.T) {
 		Tools:        []string{"sys.chat.finish"},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{DisableCache: true}, tool)
+	run, err := g.Evaluate(context.Background(), Options{DisableCache: true}, tool)
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
@@ -571,7 +588,7 @@ func TestFileChat(t *testing.T) {
 		t.Fatalf("Error getting current working directory: %v", err)
 	}
 
-	run, err := c.Run(context.Background(), wd+"/test/chat.gpt", Options{})
+	run, err := g.Run(context.Background(), wd+"/test/chat.gpt", Options{})
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
@@ -620,7 +637,7 @@ func TestToolWithGlobalTools(t *testing.T) {
 
 	var eventContent string
 
-	run, err := c.Run(context.Background(), wd+"/test/global-tools.gpt", Options{DisableCache: true, IncludeEvents: true})
+	run, err := g.Run(context.Background(), wd+"/test/global-tools.gpt", Options{DisableCache: true, IncludeEvents: true})
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
@@ -678,7 +695,7 @@ func TestConfirm(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -706,7 +723,7 @@ func TestConfirm(t *testing.T) {
 		t.Errorf("unexpected confirm input: %s", confirmCallEvent.Input)
 	}
 
-	if err = c.Confirm(context.Background(), AuthResponse{
+	if err = g.Confirm(context.Background(), AuthResponse{
 		ID:     confirmCallEvent.ID,
 		Accept: true,
 	}); err != nil {
@@ -749,7 +766,7 @@ func TestConfirmDeny(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -777,7 +794,7 @@ func TestConfirmDeny(t *testing.T) {
 		t.Errorf("unexpected confirm input: %s", confirmCallEvent.Input)
 	}
 
-	if err = c.Confirm(context.Background(), AuthResponse{
+	if err = g.Confirm(context.Background(), AuthResponse{
 		ID:      confirmCallEvent.ID,
 		Accept:  false,
 		Message: "I will not allow it!",
@@ -821,7 +838,7 @@ func TestPrompt(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true, Prompt: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Prompt: true}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -862,7 +879,7 @@ func TestPrompt(t *testing.T) {
 		t.Errorf("Unexpected field: %s", promptFrame.Fields[0])
 	}
 
-	if err = c.PromptResponse(context.Background(), PromptResponse{
+	if err = g.PromptResponse(context.Background(), PromptResponse{
 		ID:        promptFrame.ID,
 		Responses: map[string]string{promptFrame.Fields[0]: "Clicky"},
 	}); err != nil {
@@ -904,7 +921,7 @@ func TestPromptWithoutPromptAllowed(t *testing.T) {
 		},
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{IncludeEvents: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true}, tools...)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}

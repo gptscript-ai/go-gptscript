@@ -20,7 +20,7 @@ func TestRestartingErrorRun(t *testing.T) {
 		Instructions: instructions,
 	}
 
-	run, err := c.Evaluate(context.Background(), Options{Env: []string{"EXIT_CODE=1"}, IncludeEvents: true}, tool, contextTool)
+	run, err := g.Evaluate(context.Background(), Options{Env: []string{"EXIT_CODE=1"}, IncludeEvents: true}, tool, contextTool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
