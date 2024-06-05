@@ -84,13 +84,14 @@ type Call struct {
 }
 
 type CallContext struct {
-	ID           string         `json:"id"`
-	Tool         Tool           `json:"tool"`
-	DisplayText  string         `json:"displayText"`
-	InputContext []InputContext `json:"inputContext"`
-	ToolCategory ToolCategory   `json:"toolCategory,omitempty"`
-	ToolName     string         `json:"toolName,omitempty"`
-	ParentID     string         `json:"parentID,omitempty"`
+	ID           string          `json:"id"`
+	Tool         Tool            `json:"tool"`
+	AgentGroup   []ToolReference `json:"agentGroup,omitempty"`
+	DisplayText  string          `json:"displayText"`
+	InputContext []InputContext  `json:"inputContext"`
+	ToolCategory ToolCategory    `json:"toolCategory,omitempty"`
+	ToolName     string          `json:"toolName,omitempty"`
+	ParentID     string          `json:"parentID,omitempty"`
 }
 
 type InputContext struct {

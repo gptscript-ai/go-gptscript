@@ -28,7 +28,7 @@ const relativeToBinaryPath = "<me>"
 
 type GPTScript interface {
 	Run(context.Context, string, Options) (*Run, error)
-	Evaluate(context.Context, Options, ...fmt.Stringer) (*Run, error)
+	Evaluate(context.Context, Options, ...ToolDef) (*Run, error)
 	Parse(context.Context, string) ([]Node, error)
 	ParseTool(context.Context, string) ([]Node, error)
 	Version(context.Context) (string, error)
@@ -124,13 +124,13 @@ func (g *gptscript) Close() {
 	}
 }
 
-func (g *gptscript) Evaluate(ctx context.Context, opts Options, tools ...fmt.Stringer) (*Run, error) {
+func (g *gptscript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef) (*Run, error) {
 	return (&Run{
 		url:         g.url,
 		requestPath: "evaluate",
 		state:       Creating,
 		opts:        opts,
-		content:     concatTools(tools),
+		tools:       tools,
 	}).NextChat(ctx, opts.Input)
 }
 

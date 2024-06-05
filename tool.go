@@ -1,101 +1,49 @@
 package gptscript
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
 // ToolDef struct represents a tool with various configurations.
 type ToolDef struct {
-	Name            string            `json:"name,omitempty"`
-	Description     string            `json:"description,omitempty"`
-	MaxTokens       int               `json:"maxTokens,omitempty"`
-	ModelName       string            `json:"modelName,omitempty"`
-	ModelProvider   bool              `json:"modelProvider,omitempty"`
-	JSONResponse    bool              `json:"jsonResponse,omitempty"`
-	Chat            bool              `json:"chat,omitempty"`
-	Temperature     *float32          `json:"temperature,omitempty"`
-	Cache           *bool             `json:"cache,omitempty"`
-	InternalPrompt  *bool             `json:"internalPrompt"`
-	Args            map[string]string `json:"args,omitempty"`
-	Tools           []string          `json:"tools,omitempty"`
-	GlobalTools     []string          `json:"globalTools,omitempty"`
-	GlobalModelName string            `json:"globalModelName,omitempty"`
-	Context         []string          `json:"context,omitempty"`
-	ExportContext   []string          `json:"exportContext,omitempty"`
-	Export          []string          `json:"export,omitempty"`
-	Credentials     []string          `json:"credentials,omitempty"`
-	Instructions    string            `json:"instructions,omitempty"`
+	Name            string           `json:"name,omitempty"`
+	Description     string           `json:"description,omitempty"`
+	MaxTokens       int              `json:"maxTokens,omitempty"`
+	ModelName       string           `json:"modelName,omitempty"`
+	ModelProvider   bool             `json:"modelProvider,omitempty"`
+	JSONResponse    bool             `json:"jsonResponse,omitempty"`
+	Chat            bool             `json:"chat,omitempty"`
+	Temperature     *float32         `json:"temperature,omitempty"`
+	Cache           *bool            `json:"cache,omitempty"`
+	InternalPrompt  *bool            `json:"internalPrompt"`
+	Arguments       *openapi3.Schema `json:"arguments,omitempty"`
+	Tools           []string         `json:"tools,omitempty"`
+	GlobalTools     []string         `json:"globalTools,omitempty"`
+	GlobalModelName string           `json:"globalModelName,omitempty"`
+	Context         []string         `json:"context,omitempty"`
+	ExportContext   []string         `json:"exportContext,omitempty"`
+	Export          []string         `json:"export,omitempty"`
+	Agents          []string         `json:"agents,omitempty"`
+	Credentials     []string         `json:"credentials,omitempty"`
+	Instructions    string           `json:"instructions,omitempty"`
 }
 
-// String method returns the string representation of ToolDef.
-func (t *ToolDef) String() string {
-	var sb strings.Builder
-
-	if t.Name != "" {
-		sb.WriteString(fmt.Sprintf("Name: %s\n", t.Name))
+func ObjectSchema(kv ...string) *openapi3.Schema {
+	s := &openapi3.Schema{
+		Type:       "object",
+		Properties: openapi3.Schemas{},
 	}
-	if t.Description != "" {
-		sb.WriteString(fmt.Sprintf("Description: %s\n", t.Description))
-	}
-	if len(t.Tools) > 0 {
-		sb.WriteString(fmt.Sprintf("Tools: %s\n", strings.Join(t.Tools, ", ")))
-	}
-	if t.MaxTokens != 0 {
-		sb.WriteString(fmt.Sprintf("Max tokens: %d\n", t.MaxTokens))
-	}
-	if t.ModelName != "" {
-		sb.WriteString(fmt.Sprintf("Model: %s\n", t.ModelName))
-	}
-	if t.Cache != nil && !*t.Cache {
-		sb.WriteString("Cache: false\n")
-	}
-	if len(t.Context) > 0 {
-		sb.WriteString(fmt.Sprintf("Context: %s\n", strings.Join(t.Context, ", ")))
-	}
-	if len(t.ExportContext) > 0 {
-		sb.WriteString(fmt.Sprintf("Export Context: %s\n", strings.Join(t.ExportContext, ", ")))
-	}
-	if len(t.Export) > 0 {
-		sb.WriteString(fmt.Sprintf("Export: %s\n", strings.Join(t.Export, ", ")))
-	}
-	if len(t.GlobalTools) > 0 {
-		sb.WriteString(fmt.Sprintf("Global Tools: %s\n", strings.Join(t.GlobalTools, ", ")))
-	}
-	if t.Temperature != nil {
-		sb.WriteString(fmt.Sprintf("Temperature: %f\n", *t.Temperature))
-	}
-	if t.JSONResponse {
-		sb.WriteString("JSON Response: true\n")
-	}
-	if len(t.Args) > 0 {
-		for arg, desc := range t.Args {
-			sb.WriteString(fmt.Sprintf("Args: %s: %s\n", arg, desc))
+	for i, v := range kv {
+		if i%2 == 1 {
+			s.Properties[kv[i-1]] = &openapi3.SchemaRef{
+				Value: &openapi3.Schema{
+					Description: v,
+					Type:        "string",
+				},
+			}
 		}
 	}
-	if t.Chat {
-		sb.WriteString("Chat: true\n")
-	}
-	if t.InternalPrompt != nil && *t.InternalPrompt {
-		sb.WriteString("Internal prompt: true\n")
-	}
-	if t.Instructions != "" {
-		sb.WriteString(t.Instructions)
-	}
-
-	return sb.String()
-}
-
-type ToolDefs []ToolDef
-
-func (t ToolDefs) String() string {
-	resp := make([]string, 0, len(t))
-	for _, tool := range t {
-		resp = append(resp, tool.String())
-	}
-	return strings.Join(resp, "\n---\n")
+	return s
 }
 
 type Document struct {
@@ -144,15 +92,4 @@ type Repo struct {
 	Path     string
 	Name     string
 	Revision string
-}
-
-func concatTools(tools []fmt.Stringer) string {
-	var sb strings.Builder
-	for i, tool := range tools {
-		sb.WriteString(tool.String())
-		if i < len(tools)-1 {
-			sb.WriteString("\n---\n")
-		}
-	}
-	return sb.String()
 }

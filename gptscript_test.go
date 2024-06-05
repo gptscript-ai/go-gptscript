@@ -81,7 +81,7 @@ func TestListModels(t *testing.T) {
 }
 
 func TestAbortRun(t *testing.T) {
-	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
+	tool := ToolDef{Instructions: "What is the capital of the united states?"}
 
 	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
 	if err != nil {
@@ -105,7 +105,7 @@ func TestAbortRun(t *testing.T) {
 }
 
 func TestSimpleEvaluate(t *testing.T) {
-	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
+	tool := ToolDef{Instructions: "What is the capital of the united states?"}
 
 	run, err := g.Evaluate(context.Background(), Options{}, tool)
 	if err != nil {
@@ -142,7 +142,7 @@ func TestEvaluateWithContext(t *testing.T) {
 		t.Fatalf("Error getting current working directory: %v", err)
 	}
 
-	tool := &ToolDef{
+	tool := ToolDef{
 		Instructions: "What is the capital of the united states?",
 		Context: []string{
 			wd + "/test/acorn-labs-context.gpt",
@@ -165,7 +165,7 @@ func TestEvaluateWithContext(t *testing.T) {
 }
 
 func TestEvaluateComplexTool(t *testing.T) {
-	tool := &ToolDef{
+	tool := ToolDef{
 		JSONResponse: true,
 		Instructions: `
 Create three short graphic artist descriptions and their muses.
@@ -202,18 +202,16 @@ func TestEvaluateWithToolList(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		shebang = "#!/usr/bin/env powershell.exe"
 	}
-	tools := []fmt.Stringer{
-		&ToolDef{
+	tools := []ToolDef{
+		{
 			Tools:        []string{"echo"},
 			Instructions: "echo hello there",
 		},
-		&ToolDef{
-			Name:        "echo",
-			Tools:       []string{"sys.exec"},
-			Description: "Echoes the input",
-			Args: map[string]string{
-				"input": "The string input to echo",
-			},
+		{
+			Name:         "echo",
+			Tools:        []string{"sys.exec"},
+			Description:  "Echoes the input",
+			Arguments:    ObjectSchema("input", "The string input to echo"),
 			Instructions: shebang + "\n echo ${input}",
 		},
 	}
@@ -238,23 +236,21 @@ func TestEvaluateWithToolListAndSubTool(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		shebang = "#!/usr/bin/env powershell.exe"
 	}
-	tools := []fmt.Stringer{
-		&ToolDef{
+	tools := []ToolDef{
+		{
 			Tools:        []string{"echo"},
 			Instructions: "echo 'hello there'",
 		},
-		&ToolDef{
+		{
 			Name:         "other",
 			Tools:        []string{"echo"},
 			Instructions: "echo 'hello somewhere else'",
 		},
-		&ToolDef{
-			Name:        "echo",
-			Tools:       []string{"sys.exec"},
-			Description: "Echoes the input",
-			Args: map[string]string{
-				"input": "The string input to echo",
-			},
+		{
+			Name:         "echo",
+			Tools:        []string{"sys.exec"},
+			Description:  "Echoes the input",
+			Arguments:    ObjectSchema("input", "The string input to echo"),
 			Instructions: shebang + "\n echo ${input}",
 		},
 	}
@@ -276,7 +272,7 @@ func TestEvaluateWithToolListAndSubTool(t *testing.T) {
 
 func TestStreamEvaluate(t *testing.T) {
 	var eventContent string
-	tool := &ToolDef{Instructions: "What is the capital of the united states?"}
+	tool := ToolDef{Instructions: "What is the capital of the united states?"}
 
 	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true}, tool)
 	if err != nil {
@@ -536,7 +532,7 @@ echo hello there
 }
 
 func TestToolChat(t *testing.T) {
-	tool := &ToolDef{
+	tool := ToolDef{
 		Chat:         true,
 		Instructions: "You are a chat bot. Don't finish the conversation until I say 'bye'.",
 		Tools:        []string{"sys.chat.finish"},
@@ -688,8 +684,8 @@ func TestToolWithGlobalTools(t *testing.T) {
 
 func TestConfirm(t *testing.T) {
 	var eventContent string
-	tools := []fmt.Stringer{
-		&ToolDef{
+	tools := []ToolDef{
+		{
 			Instructions: "List the files in the current directory",
 			Tools:        []string{"sys.exec"},
 		},
@@ -759,8 +755,8 @@ func TestConfirm(t *testing.T) {
 
 func TestConfirmDeny(t *testing.T) {
 	var eventContent string
-	tools := []fmt.Stringer{
-		&ToolDef{
+	tools := []ToolDef{
+		{
 			Instructions: "List the files in the current directory",
 			Tools:        []string{"sys.exec"},
 		},
@@ -831,8 +827,8 @@ func TestConfirmDeny(t *testing.T) {
 
 func TestPrompt(t *testing.T) {
 	var eventContent string
-	tools := []fmt.Stringer{
-		&ToolDef{
+	tools := []ToolDef{
+		{
 			Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
 			Tools:        []string{"sys.prompt"},
 		},
@@ -914,8 +910,8 @@ func TestPrompt(t *testing.T) {
 }
 
 func TestPromptWithoutPromptAllowed(t *testing.T) {
-	tools := []fmt.Stringer{
-		&ToolDef{
+	tools := []ToolDef{
+		{
 			Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
 			Tools:        []string{"sys.prompt"},
 		},
