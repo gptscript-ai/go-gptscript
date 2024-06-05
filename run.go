@@ -18,14 +18,15 @@ import (
 var errAbortRun = errors.New("run aborted")
 
 type Run struct {
-	url, requestPath, toolPath, content string
-	opts                                Options
-	state                               RunState
-	chatState                           string
-	cancel                              context.CancelCauseFunc
-	err                                 error
-	wait                                func()
-	basicCommand                        bool
+	url, requestPath, toolPath string
+	tools                      []ToolDef
+	opts                       Options
+	state                      RunState
+	chatState                  string
+	cancel                     context.CancelCauseFunc
+	err                        error
+	wait                       func()
+	basicCommand               bool
 
 	program           *Program
 	callsLock         sync.RWMutex
@@ -163,7 +164,7 @@ func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
 		requestPath: r.requestPath,
 		state:       Creating,
 		toolPath:    r.toolPath,
-		content:     r.content,
+		tools:       r.tools,
 		opts:        r.opts,
 	}
 
@@ -175,11 +176,11 @@ func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
 	}
 
 	var payload any
-	if r.content != "" {
+	if len(r.tools) != 0 {
 		payload = requestPayload{
-			Content: run.content,
-			Input:   input,
-			Options: run.opts,
+			ToolDefs: r.tools,
+			Input:    input,
+			Options:  run.opts,
 		}
 	} else if run.toolPath != "" {
 		payload = requestPayload{
@@ -412,8 +413,8 @@ const (
 )
 
 type requestPayload struct {
-	Content string `json:"content"`
-	File    string `json:"file"`
-	Input   string `json:"input"`
-	Options `json:",inline"`
+	Options  `json:",inline"`
+	File     string    `json:"file"`
+	Input    string    `json:"input"`
+	ToolDefs []ToolDef `json:"toolDefs,inline"`
 }

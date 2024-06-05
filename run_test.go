@@ -11,11 +11,11 @@ func TestRestartingErrorRun(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		instructions = "#!/usr/bin/env powershell.exe\n\n$e = $env:EXIT_CODE;\nif ($e) { Exit 1; }"
 	}
-	tool := &ToolDef{
+	tool := ToolDef{
 		Context:      []string{"my-context"},
 		Instructions: "Say hello",
 	}
-	contextTool := &ToolDef{
+	contextTool := ToolDef{
 		Name:         "my-context",
 		Instructions: instructions,
 	}
