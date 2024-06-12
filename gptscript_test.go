@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	}
 
 	var err error
-	g, err = NewGPTScript()
+	g, err = NewGPTScript(GlobalOptions{})
 	if err != nil {
 		panic(fmt.Sprintf("error creating gptscript: %s", err))
 	}
@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestCreateAnotherGPTScript(t *testing.T) {
-	g, err := NewGPTScript()
+	g, err := NewGPTScript(GlobalOptions{})
 	if err != nil {
 		t.Errorf("error creating gptscript: %s", err)
 	}
@@ -107,7 +107,9 @@ func TestAbortRun(t *testing.T) {
 func TestSimpleEvaluate(t *testing.T) {
 	tool := ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := g.Evaluate(context.Background(), Options{}, tool)
+	run, err := g.Evaluate(context.Background(), Options{
+		GlobalOptions: GlobalOptions{},
+	}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
