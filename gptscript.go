@@ -73,7 +73,7 @@ func NewGPTScript(opts GlobalOptions) (GPTScript, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		in, _ := io.Pipe()
-		serverProcess = exec.CommandContext(ctx, getCommand(), "--listen-address", serverURL, "sdkserver")
+		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", serverURL)
 		if opts.Env == nil {
 			opts.Env = os.Environ()
 		}
