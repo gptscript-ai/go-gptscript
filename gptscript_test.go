@@ -20,7 +20,7 @@ func TestMain(m *testing.M) {
 	}
 
 	var err error
-	g, err = NewGPTScript(GlobalOptions{})
+	g, err = NewGPTScript(GlobalOptions{OpenAIAPIKey: os.Getenv("OPENAI_API_KEY")})
 	if err != nil {
 		panic(fmt.Sprintf("error creating gptscript: %s", err))
 	}
@@ -734,6 +734,20 @@ func TestConfirm(t *testing.T) {
 			for _, o := range e.Call.Output {
 				eventContent += o.Content
 			}
+
+			if e.Call.Type == EventTypeCallConfirm {
+				// On Windows, ls may not be recognized as a command. The LLM will try to run the dir command. Confirm it.
+				if !strings.Contains(e.Call.Input, "\"dir\"") {
+					t.Errorf("unexpected confirm input: %s", e.Call.Input)
+				}
+
+				if err = g.Confirm(context.Background(), AuthResponse{
+					ID:     e.Call.ID,
+					Accept: true,
+				}); err != nil {
+					t.Errorf("Error confirming: %v", err)
+				}
+			}
 		}
 	}
 
@@ -742,7 +756,7 @@ func TestConfirm(t *testing.T) {
 		t.Errorf("Error reading output: %v", err)
 	}
 
-	if !strings.Contains(eventContent, "Makefile\nREADME.md") {
+	if !strings.Contains(eventContent, "Makefile") || !strings.Contains(eventContent, "README.md") {
 		t.Errorf("Unexpected event output: %s", eventContent)
 	}
 
