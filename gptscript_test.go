@@ -435,12 +435,12 @@ func TestFmt(t *testing.T) {
 						Instructions: "#!/bin/bash\necho hello there",
 					},
 					Arguments: &openapi3.Schema{
-						Type: "object",
+						Type: &openapi3.Types{"object"},
 						Properties: map[string]*openapi3.SchemaRef{
 							"input": {
 								Value: &openapi3.Schema{
 									Description: "The string input to echo",
-									Type:        "string",
+									Type:        &openapi3.Types{"string"},
 								},
 							},
 						},
@@ -495,12 +495,12 @@ func TestFmtWithTextNode(t *testing.T) {
 						Name:         "echo",
 					},
 					Arguments: &openapi3.Schema{
-						Type: "object",
+						Type: &openapi3.Types{"object"},
 						Properties: map[string]*openapi3.SchemaRef{
 							"input": {
 								Value: &openapi3.Schema{
 									Description: "The string input to echo",
-									Type:        "string",
+									Type:        &openapi3.Types{"string"},
 								},
 							},
 						},

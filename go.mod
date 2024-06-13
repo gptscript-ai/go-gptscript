@@ -2,7 +2,7 @@ module github.com/gptscript-ai/go-gptscript
 
 go 1.22.2
 
-require github.com/getkin/kin-openapi v0.123.0
+require github.com/getkin/kin-openapi v0.124.0
 
 require (
 	github.com/go-openapi/jsonpointer v0.20.2 // indirect
