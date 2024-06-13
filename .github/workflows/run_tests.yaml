@@ -55,5 +55,5 @@ jobs:
         env:
           GPTSCRIPT_BIN: .\gptscript.exe
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GPTSCRIPT_CONFIG: .\config
+          GPTSCRIPT_CONFIG_FILE: .\config
         run: make test
