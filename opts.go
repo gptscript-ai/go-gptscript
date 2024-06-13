@@ -8,16 +8,16 @@ type GlobalOptions struct {
 	DefaultModel  string `json:"DefaultModel"`
 }
 
-func (g GlobalOptions) toArgs() []string {
+func (g GlobalOptions) toEnv() []string {
 	var args []string
 	if g.OpenAIAPIKey != "" {
-		args = append(args, "--openai-api-key", g.OpenAIAPIKey)
+		args = append(args, "OPENAI_API_KEY="+g.OpenAIAPIKey)
 	}
 	if g.OpenAIBaseURL != "" {
-		args = append(args, "--openai-base-url", g.OpenAIBaseURL)
+		args = append(args, "OPENAI_BASE_URL="+g.OpenAIBaseURL)
 	}
 	if g.DefaultModel != "" {
-		args = append(args, "--default-model", g.DefaultModel)
+		args = append(args, "GPTSCRIPT_DEFAULT_MODEL="+g.DefaultModel)
 	}
 
 	return args

@@ -49,11 +49,13 @@ func NewGPTScript(opts GlobalOptions) (GPTScript, error) {
 	defer lock.Unlock()
 	gptscriptCount++
 
-	if serverURL == "" {
+	disableServer := os.Getenv("GPT_SCRIPT_DISABLE_SERVER") == "true"
+
+	if serverURL == "" && disableServer {
 		serverURL = os.Getenv("GPTSCRIPT_URL")
 	}
 
-	if serverProcessCancel == nil && os.Getenv("GPTSCRIPT_DISABLE_SERVER") != "true" {
+	if serverProcessCancel == nil && !disableServer {
 		if serverURL == "" {
 			l, err := net.Listen("tcp", "127.0.0.1:0")
 			if err != nil {
@@ -71,7 +73,8 @@ func NewGPTScript(opts GlobalOptions) (GPTScript, error) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		in, _ := io.Pipe()
-		serverProcess = exec.CommandContext(ctx, getCommand(), append(opts.toArgs(), "--listen-address", serverURL, "sdkserver")...)
+		serverProcess = exec.CommandContext(ctx, getCommand(), "--listen-address", serverURL, "sdkserver")
+		serverProcess.Env = append(os.Environ(), opts.toEnv()...)
 		serverProcess.Stdin = in
 
 		serverProcessCancel = func() {
