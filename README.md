@@ -27,6 +27,7 @@ When creating a `GTPScript` instance, you can pass the following global options.
 - `APIKey`: Specify an OpenAI API key for authenticating requests
 - `BaseURL`: A base URL for an OpenAI compatible API (the default is `https://api.openai.com/v1`)
 - `DefaultModel`: The default model to use for OpenAI requests
+- `Env`: Supply the environment variables. Supplying anything here means that nothing from the environment is used. The default is `os.Environ()`. Supplying `Env` at the run/evaluate level will be treated as "additional." 
 
 ## Run Options
 
@@ -43,7 +44,6 @@ As noted above, the Global Options are also available to specify here. These opt
 - `chatState`: The chat state to continue, or null to start a new chat and return the state
 - `confirm`: Prompt before running potentially dangerous commands
 - `prompt`: Allow prompting of the user
-- `env`: Extra environment variables to pass to the script in the form `KEY=VAL`
 
 ## Functions
 

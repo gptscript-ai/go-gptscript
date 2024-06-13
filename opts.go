@@ -3,9 +3,10 @@ package gptscript
 // GlobalOptions allows specification of settings that are used for every call made.
 // These options can be overridden by the corresponding Options.
 type GlobalOptions struct {
-	OpenAIAPIKey  string `json:"APIKey"`
-	OpenAIBaseURL string `json:"BaseURL"`
-	DefaultModel  string `json:"DefaultModel"`
+	OpenAIAPIKey  string   `json:"APIKey"`
+	OpenAIBaseURL string   `json:"BaseURL"`
+	DefaultModel  string   `json:"DefaultModel"`
+	Env           []string `json:"env"`
 }
 
 func (g GlobalOptions) toEnv() []string {
@@ -27,14 +28,13 @@ func (g GlobalOptions) toEnv() []string {
 type Options struct {
 	GlobalOptions `json:",inline"`
 
-	Confirm       bool     `json:"confirm"`
-	Input         string   `json:"input"`
-	DisableCache  bool     `json:"disableCache"`
-	CacheDir      string   `json:"cacheDir"`
-	SubTool       string   `json:"subTool"`
-	Workspace     string   `json:"workspace"`
-	ChatState     string   `json:"chatState"`
-	IncludeEvents bool     `json:"includeEvents"`
-	Prompt        bool     `json:"prompt"`
-	Env           []string `json:"env"`
+	Confirm       bool   `json:"confirm"`
+	Input         string `json:"input"`
+	DisableCache  bool   `json:"disableCache"`
+	CacheDir      string `json:"cacheDir"`
+	SubTool       string `json:"subTool"`
+	Workspace     string `json:"workspace"`
+	ChatState     string `json:"chatState"`
+	IncludeEvents bool   `json:"includeEvents"`
+	Prompt        bool   `json:"prompt"`
 }
