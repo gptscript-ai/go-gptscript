@@ -49,7 +49,7 @@ func NewGPTScript(opts GlobalOptions) (GPTScript, error) {
 	defer lock.Unlock()
 	gptscriptCount++
 
-	disableServer := os.Getenv("GPT_SCRIPT_DISABLE_SERVER") == "true"
+	disableServer := os.Getenv("GPTSCRIPT_DISABLE_SERVER") == "true"
 
 	if serverURL == "" && disableServer {
 		serverURL = os.Getenv("GPTSCRIPT_URL")
@@ -165,6 +165,10 @@ func (g *gptscript) Parse(ctx context.Context, fileName string) ([]Node, error) 
 		return nil, err
 	}
 
+	for _, node := range doc.Nodes {
+		node.TextNode.process()
+	}
+
 	return doc.Nodes, nil
 }
 
@@ -180,11 +184,19 @@ func (g *gptscript) ParseTool(ctx context.Context, toolDef string) ([]Node, erro
 		return nil, err
 	}
 
+	for _, node := range doc.Nodes {
+		node.TextNode.process()
+	}
+
 	return doc.Nodes, nil
 }
 
 // Fmt will format the given nodes into a string.
 func (g *gptscript) Fmt(ctx context.Context, nodes []Node) (string, error) {
+	for _, node := range nodes {
+		node.TextNode.combine()
+	}
+
 	out, err := g.runBasicCommand(ctx, "fmt", Document{Nodes: nodes})
 	if err != nil {
 		return "", err
