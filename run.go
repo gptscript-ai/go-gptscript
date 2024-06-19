@@ -43,7 +43,7 @@ func (r *Run) Text() (string, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	if r.err != nil {
-		return "", r.err
+		return "", fmt.Errorf("run encounterd an error: %w with error output: %s", r.err, r.errput)
 	}
 
 	return r.output, nil
@@ -237,11 +237,11 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		r.state = Error
-		r.err = fmt.Errorf("unexpected response status: %s", resp.Status)
-		return r.err
+		r.err = fmt.Errorf("run encountered an error")
+	} else {
+		r.state = Running
 	}
 
-	r.state = Running
 	r.events = make(chan Frame, 100)
 	r.lock.Lock()
 	go func() {

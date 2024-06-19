@@ -151,7 +151,7 @@ func TestEvaluateWithContext(t *testing.T) {
 		},
 	}
 
-	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
+	run, err := g.Evaluate(context.Background(), Options{}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -214,7 +214,7 @@ func TestEvaluateWithToolList(t *testing.T) {
 			Tools:        []string{"sys.exec"},
 			Description:  "Echoes the input",
 			Arguments:    ObjectSchema("input", "The string input to echo"),
-			Instructions: shebang + "\n echo ${input}",
+			Instructions: shebang + "\necho ${input}",
 		},
 	}
 
@@ -410,8 +410,11 @@ func TestParseToolWithTextNode(t *testing.T) {
 		t.Fatalf("No text node found")
 	}
 
-	if tools[1].TextNode.Text != "!markdown\nhello\n" {
+	if tools[1].TextNode.Text != "hello\n" {
 		t.Errorf("Unexpected text: %s", tools[1].TextNode.Text)
+	}
+	if tools[1].TextNode.Fmt != "markdown" {
+		t.Errorf("Unexpected fmt: %s", tools[1].TextNode.Fmt)
 	}
 }
 
@@ -484,7 +487,8 @@ func TestFmtWithTextNode(t *testing.T) {
 		},
 		{
 			TextNode: &TextNode{
-				Text: "!markdown\nWe now echo hello there\n",
+				Fmt:  "markdown",
+				Text: "We now echo hello there\n",
 			},
 		},
 		{
@@ -686,14 +690,12 @@ func TestToolWithGlobalTools(t *testing.T) {
 
 func TestConfirm(t *testing.T) {
 	var eventContent string
-	tools := []ToolDef{
-		{
-			Instructions: "List the files in the current directory",
-			Tools:        []string{"sys.exec"},
-		},
+	tools := ToolDef{
+		Instructions: "List the files in the current directory",
+		Tools:        []string{"sys.exec"},
 	}
 
-	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -771,14 +773,12 @@ func TestConfirm(t *testing.T) {
 
 func TestConfirmDeny(t *testing.T) {
 	var eventContent string
-	tools := []ToolDef{
-		{
-			Instructions: "List the files in the current directory",
-			Tools:        []string{"sys.exec"},
-		},
+	tools := ToolDef{
+		Instructions: "List the files in the current directory",
+		Tools:        []string{"sys.exec"},
 	}
 
-	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Confirm: true}, tools)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -843,14 +843,12 @@ func TestConfirmDeny(t *testing.T) {
 
 func TestPrompt(t *testing.T) {
 	var eventContent string
-	tools := []ToolDef{
-		{
-			Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
-			Tools:        []string{"sys.prompt"},
-		},
+	tools := ToolDef{
+		Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
+		Tools:        []string{"sys.prompt"},
 	}
 
-	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Prompt: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true, Prompt: true}, tools)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -926,14 +924,12 @@ func TestPrompt(t *testing.T) {
 }
 
 func TestPromptWithoutPromptAllowed(t *testing.T) {
-	tools := []ToolDef{
-		{
-			Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
-			Tools:        []string{"sys.prompt"},
-		},
+	tools := ToolDef{
+		Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
+		Tools:        []string{"sys.prompt"},
 	}
 
-	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{IncludeEvents: true}, tools)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}

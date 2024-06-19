@@ -35,8 +35,7 @@ These are optional options that can be passed to the various `exec` functions.
 None of the options is required, and the defaults will reduce the number of calls made to the Model API.
 As noted above, the Global Options are also available to specify here. These options would take precedence.
 
-- `cache`: Enable or disable caching. Default (true).
-- `cacheDir`: Specify the cache directory.
+- `disableCache`: Enable or disable caching. Default (false).
 - `subTool`: Use tool of this name, not the first tool
 - `input`: Input arguments for the tool run
 - `workspace`: Directory to use for the workspace, if specified it will not be deleted on exit
@@ -88,7 +87,7 @@ import (
 )
 
 func listModels(ctx context.Context) ([]string, error) {
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +110,7 @@ import (
 )
 
 func parse(ctx context.Context, fileName string) ([]gptscript.Node, error) {
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +134,7 @@ import (
 )
 
 func parseTool(ctx context.Context, contents string) ([]gptscript.Node, error) {
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +158,7 @@ import (
 )
 
 func parse(ctx context.Context, nodes []gptscript.Node) (string, error) {
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -187,7 +186,7 @@ func runTool(ctx context.Context) (string, error) {
 		Instructions: "who was the president of the united states in 1928?",
 	}
 
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -221,7 +220,7 @@ func runFile(ctx context.Context) (string, error) {
 		Input: "--input hello",
 	}
 
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -238,7 +237,7 @@ func runFile(ctx context.Context) (string, error) {
 
 ### Streaming events
 
-In order to stream events, you must set `IncludeEvents` option to `true`. You if you don't set this and try to stream events, then it will succeed, but you will not get any events. More importantly, if you set `IncludeEvents` to `true`, you must stream the events for the script to complete.
+In order to stream events, you must set `IncludeEvents` option to `true`. If you don't set this and try to stream events, then it will succeed, but you will not get any events. More importantly, if you set `IncludeEvents` to `true`, you must stream the events for the script to complete.
 
 ```go
 package main
@@ -250,13 +249,13 @@ import (
 )
 
 func streamExecTool(ctx context.Context) error {
-	opts := gptscript.Opts{
+	opts := gptscript.Options{
 		DisableCache:  &[]bool{true}[0],
 		IncludeEvents: true,
 		Input:         "--input world",
 	}
 
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -278,7 +277,7 @@ func streamExecTool(ctx context.Context) error {
 
 ### Confirm
 
-Using the `confirm: true` option allows a user to inspect potentially dangerous commands before they are run. The caller has the ability to allow or disallow their running. In order to do this, a caller should look for the `CallConfirm` event. This also means that `IncludeEvent` should be `true`.
+Using the `Confirm: true` option allows a user to inspect potentially dangerous commands before they are run. The caller has the ability to allow or disallow their running. In order to do this, a caller should look for the `CallConfirm` event. This also means that `IncludeEvent` should be `true`.
 
 ```go
 package main
@@ -297,7 +296,7 @@ func runFileWithConfirm(ctx context.Context) (string, error) {
 		IncludeEvents: true,
 	}
 
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -351,7 +350,7 @@ func runFileWithPrompt(ctx context.Context) (string, error) {
 		IncludeEvents: true,
 	}
 
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return "", err
 	}

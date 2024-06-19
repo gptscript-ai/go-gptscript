@@ -1,6 +1,9 @@
 package gptscript
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
@@ -56,11 +59,26 @@ type Node struct {
 }
 
 type TextNode struct {
+	Fmt  string `json:"fmt,omitempty"`
 	Text string `json:"text,omitempty"`
 }
 
+func (n *TextNode) combine() {
+	if n != nil && n.Fmt != "" {
+		n.Text = fmt.Sprintf("!%s\n%s", n.Fmt, n.Text)
+		n.Fmt = ""
+	}
+}
+
+func (n *TextNode) process() {
+	if n != nil && strings.HasPrefix(n.Text, "!") {
+		n.Fmt, n.Text, _ = strings.Cut(strings.TrimPrefix(n.Text, "!"), "\n")
+	}
+}
+
 type ToolNode struct {
-	Tool Tool `json:"tool,omitempty"`
+	Fmt  string `json:"fmt,omitempty"`
+	Tool Tool   `json:"tool,omitempty"`
 }
 
 type Tool struct {
