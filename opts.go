@@ -18,7 +18,7 @@ func (g GlobalOptions) toEnv() []string {
 		args = append(args, "OPENAI_BASE_URL="+g.OpenAIBaseURL)
 	}
 	if g.DefaultModel != "" {
-		args = append(args, "GPTSCRIPT_DEFAULT_MODEL="+g.DefaultModel)
+		args = append(args, "GPTSCRIPT_SDKSERVER_DEFAULT_MODEL="+g.DefaultModel)
 	}
 
 	return args

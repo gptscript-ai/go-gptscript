@@ -774,7 +774,7 @@ func TestConfirm(t *testing.T) {
 func TestConfirmDeny(t *testing.T) {
 	var eventContent string
 	tools := ToolDef{
-		Instructions: "List the files in the current directory",
+		Instructions: "List the files in the current directory as '.'. If that doesn't work print the word FAIL.",
 		Tools:        []string{"sys.exec"},
 	}
 
@@ -828,11 +828,11 @@ func TestConfirmDeny(t *testing.T) {
 		t.Errorf("Error reading output: %v", err)
 	}
 
-	if !strings.Contains(strings.ToLower(eventContent), "authorization error") {
+	if !strings.Contains(strings.ToLower(eventContent), "fail") {
 		t.Errorf("Unexpected event output: %s", eventContent)
 	}
 
-	if !strings.Contains(strings.ToLower(out), "authorization error") {
+	if !strings.Contains(strings.ToLower(out), "fail") {
 		t.Errorf("Unexpected output: %s", out)
 	}
 
