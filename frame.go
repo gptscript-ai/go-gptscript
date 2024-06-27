@@ -10,8 +10,11 @@ type ToolCategory string
 type EventType string
 
 const (
+	ProviderToolCategory   ToolCategory = "provider"
 	CredentialToolCategory ToolCategory = "credential"
 	ContextToolCategory    ToolCategory = "context"
+	InputToolCategory      ToolCategory = "input"
+	OutputToolCategory     ToolCategory = "output"
 	NoCategory             ToolCategory = ""
 
 	EventTypeRunStart     EventType = "runStart"
