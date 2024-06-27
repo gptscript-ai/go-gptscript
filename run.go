@@ -42,11 +42,8 @@ type Run struct {
 func (r *Run) Text() (string, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
-	if r.err != nil {
-		return "", fmt.Errorf("run encounterd an error: %w with error output: %s", r.err, r.errput)
-	}
 
-	return r.output, nil
+	return r.output, r.Err()
 }
 
 // Bytes returns the output of the gptscript in bytes. It blocks until the output is ready.
@@ -62,7 +59,10 @@ func (r *Run) State() RunState {
 
 // Err returns the error that caused the gptscript to fail, if any.
 func (r *Run) Err() error {
-	return r.err
+	if r.err != nil {
+		return fmt.Errorf("run encounterd an error: %w with error output: %s", r.err, r.errput)
+	}
+	return nil
 }
 
 // Program returns the gptscript program for the run.
