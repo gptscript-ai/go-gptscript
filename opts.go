@@ -28,13 +28,14 @@ func (g GlobalOptions) toEnv() []string {
 type Options struct {
 	GlobalOptions `json:",inline"`
 
-	Confirm       bool   `json:"confirm"`
-	Input         string `json:"input"`
-	DisableCache  bool   `json:"disableCache"`
-	CacheDir      string `json:"cacheDir"`
-	SubTool       string `json:"subTool"`
-	Workspace     string `json:"workspace"`
-	ChatState     string `json:"chatState"`
-	IncludeEvents bool   `json:"includeEvents"`
-	Prompt        bool   `json:"prompt"`
+	Confirm            bool   `json:"confirm"`
+	Input              string `json:"input"`
+	DisableCache       bool   `json:"disableCache"`
+	CacheDir           string `json:"cacheDir"`
+	SubTool            string `json:"subTool"`
+	Workspace          string `json:"workspace"`
+	ChatState          string `json:"chatState"`
+	IncludeEvents      bool   `json:"includeEvents"`
+	Prompt             bool   `json:"prompt"`
+	CredentialOverride string `json:"credentialOverride"`
 }
