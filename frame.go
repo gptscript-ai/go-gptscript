@@ -90,6 +90,7 @@ type CallContext struct {
 	ID           string          `json:"id"`
 	Tool         Tool            `json:"tool"`
 	AgentGroup   []ToolReference `json:"agentGroup,omitempty"`
+	CurrentAgent ToolReference   `json:"currentAgent,omitempty"`
 	DisplayText  string          `json:"displayText"`
 	InputContext []InputContext  `json:"inputContext"`
 	ToolCategory ToolCategory    `json:"toolCategory,omitempty"`
