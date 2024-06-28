@@ -244,6 +244,17 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 
 	r.events = make(chan Frame, 100)
 	r.lock.Lock()
+
+	r.wait = func() {
+		<-cancelCtx.Done()
+		if err := context.Cause(cancelCtx); !errors.Is(err, context.Canceled) && r.err == nil {
+			r.state = Error
+			r.err = err
+		} else if r.state != Continue && r.state != Error {
+			r.state = Finished
+		}
+	}
+
 	go func() {
 		var (
 			err  error
@@ -384,16 +395,6 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 			r.state = Continue
 		}
 	}()
-
-	r.wait = func() {
-		<-cancelCtx.Done()
-		if err := context.Cause(cancelCtx); !errors.Is(err, context.Canceled) && r.err == nil {
-			r.state = Error
-			r.err = err
-		} else if r.state != Continue && r.state != Error {
-			r.state = Finished
-		}
-	}
 
 	return nil
 }
