@@ -345,6 +345,36 @@ func TestStreamRun(t *testing.T) {
 	}
 }
 
+func TestCredentialOverride(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	run, err := g.Run(context.Background(), wd+"/test/credential-override.gpt", Options{
+		DisableCache: true,
+		CredentialOverrides: []string{
+			"test.ts.credential_override:TEST_CRED=foo",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error executing file: %v", err)
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if !strings.Contains(out, "foo") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+
+	if len(run.ErrorOutput()) != 0 {
+		t.Error("Should have no stderr output")
+	}
+}
+
 func TestParseSimpleFile(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
