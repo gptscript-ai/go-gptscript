@@ -12,7 +12,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3"
 )
 
-var g GPTScript
+var g *GPTScript
 
 func TestMain(m *testing.M) {
 	if os.Getenv("OPENAI_API_KEY") == "" && os.Getenv("GPTSCRIPT_URL") == "" {

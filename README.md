@@ -62,11 +62,12 @@ import (
 )
 
 func listTools(ctx context.Context) (string, error) {
-	g, err := gptscript.NewGPTScript()
+	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
 	if err != nil {
 		return "", err
 	}
 	defer g.Close()
+
 	return g.ListTools(ctx)
 }
 ```
@@ -92,6 +93,7 @@ func listModels(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 	defer g.Close()
+
 	return g.ListModels(ctx)
 }
 ```
