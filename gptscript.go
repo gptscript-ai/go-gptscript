@@ -26,25 +26,11 @@ var (
 
 const relativeToBinaryPath = "<me>"
 
-type GPTScript interface {
-	Run(context.Context, string, Options) (*Run, error)
-	Evaluate(context.Context, Options, ...ToolDef) (*Run, error)
-	Parse(context.Context, string) ([]Node, error)
-	ParseTool(context.Context, string) ([]Node, error)
-	Version(context.Context) (string, error)
-	Fmt(context.Context, []Node) (string, error)
-	ListTools(context.Context) (string, error)
-	ListModels(context.Context) ([]string, error)
-	Confirm(context.Context, AuthResponse) error
-	PromptResponse(context.Context, PromptResponse) error
-	Close()
-}
-
-type gptscript struct {
+type GPTScript struct {
 	url string
 }
 
-func NewGPTScript(opts GlobalOptions) (GPTScript, error) {
+func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
 	lock.Lock()
 	defer lock.Unlock()
 	gptscriptCount++
@@ -98,7 +84,7 @@ func NewGPTScript(opts GlobalOptions) (GPTScript, error) {
 			return nil, fmt.Errorf("failed to wait for gptscript to be ready: %w", err)
 		}
 	}
-	return &gptscript{url: "http://" + serverURL}, nil
+	return &GPTScript{url: "http://" + serverURL}, nil
 }
 
 func waitForServerReady(ctx context.Context, serverURL string) error {
@@ -122,7 +108,7 @@ func waitForServerReady(ctx context.Context, serverURL string) error {
 	}
 }
 
-func (g *gptscript) Close() {
+func (g *GPTScript) Close() {
 	lock.Lock()
 	defer lock.Unlock()
 	gptscriptCount--
@@ -133,7 +119,7 @@ func (g *gptscript) Close() {
 	}
 }
 
-func (g *gptscript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef) (*Run, error) {
+func (g *GPTScript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef) (*Run, error) {
 	return (&Run{
 		url:         g.url,
 		requestPath: "evaluate",
@@ -143,7 +129,7 @@ func (g *gptscript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef
 	}).NextChat(ctx, opts.Input)
 }
 
-func (g *gptscript) Run(ctx context.Context, toolPath string, opts Options) (*Run, error) {
+func (g *GPTScript) Run(ctx context.Context, toolPath string, opts Options) (*Run, error) {
 	return (&Run{
 		url:         g.url,
 		requestPath: "run",
@@ -154,7 +140,7 @@ func (g *gptscript) Run(ctx context.Context, toolPath string, opts Options) (*Ru
 }
 
 // Parse will parse the given file into an array of Nodes.
-func (g *gptscript) Parse(ctx context.Context, fileName string) ([]Node, error) {
+func (g *GPTScript) Parse(ctx context.Context, fileName string) ([]Node, error) {
 	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"file": fileName})
 	if err != nil {
 		return nil, err
@@ -173,7 +159,7 @@ func (g *gptscript) Parse(ctx context.Context, fileName string) ([]Node, error) 
 }
 
 // ParseTool will parse the given string into a tool.
-func (g *gptscript) ParseTool(ctx context.Context, toolDef string) ([]Node, error) {
+func (g *GPTScript) ParseTool(ctx context.Context, toolDef string) ([]Node, error) {
 	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"content": toolDef})
 	if err != nil {
 		return nil, err
@@ -192,7 +178,7 @@ func (g *gptscript) ParseTool(ctx context.Context, toolDef string) ([]Node, erro
 }
 
 // Fmt will format the given nodes into a string.
-func (g *gptscript) Fmt(ctx context.Context, nodes []Node) (string, error) {
+func (g *GPTScript) Fmt(ctx context.Context, nodes []Node) (string, error) {
 	for _, node := range nodes {
 		node.TextNode.combine()
 	}
@@ -206,7 +192,7 @@ func (g *gptscript) Fmt(ctx context.Context, nodes []Node) (string, error) {
 }
 
 // Version will return the output of `gptscript --version`
-func (g *gptscript) Version(ctx context.Context) (string, error) {
+func (g *GPTScript) Version(ctx context.Context) (string, error) {
 	out, err := g.runBasicCommand(ctx, "version", nil)
 	if err != nil {
 		return "", err
@@ -216,7 +202,7 @@ func (g *gptscript) Version(ctx context.Context) (string, error) {
 }
 
 // ListTools will list all the available tools.
-func (g *gptscript) ListTools(ctx context.Context) (string, error) {
+func (g *GPTScript) ListTools(ctx context.Context) (string, error) {
 	out, err := g.runBasicCommand(ctx, "list-tools", nil)
 	if err != nil {
 		return "", err
@@ -226,7 +212,7 @@ func (g *gptscript) ListTools(ctx context.Context) (string, error) {
 }
 
 // ListModels will list all the available models.
-func (g *gptscript) ListModels(ctx context.Context) ([]string, error) {
+func (g *GPTScript) ListModels(ctx context.Context) ([]string, error) {
 	out, err := g.runBasicCommand(ctx, "list-models", nil)
 	if err != nil {
 		return nil, err
@@ -235,17 +221,17 @@ func (g *gptscript) ListModels(ctx context.Context) ([]string, error) {
 	return strings.Split(strings.TrimSpace(out), "\n"), nil
 }
 
-func (g *gptscript) Confirm(ctx context.Context, resp AuthResponse) error {
+func (g *GPTScript) Confirm(ctx context.Context, resp AuthResponse) error {
 	_, err := g.runBasicCommand(ctx, "confirm/"+resp.ID, resp)
 	return err
 }
 
-func (g *gptscript) PromptResponse(ctx context.Context, resp PromptResponse) error {
+func (g *GPTScript) PromptResponse(ctx context.Context, resp PromptResponse) error {
 	_, err := g.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Responses)
 	return err
 }
 
-func (g *gptscript) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
+func (g *GPTScript) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
 	run := &Run{
 		url:          g.url,
 		requestPath:  requestPath,
