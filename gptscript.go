@@ -1,19 +1,17 @@
 package gptscript
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
-	"net"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 )
 
 var (
@@ -42,70 +40,69 @@ func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
 	}
 
 	if serverProcessCancel == nil && !disableServer {
-		if serverURL == "" {
-			l, err := net.Listen("tcp", "127.0.0.1:0")
-			if err != nil {
-				slog.Debug("failed to start gptscript listener", "err", err)
-				return nil, fmt.Errorf("failed to start gptscript: %w", err)
-			}
-
-			serverURL = l.Addr().String()
-			if err = l.Close(); err != nil {
-				slog.Debug("failed to close gptscript listener", "err", err)
-				return nil, fmt.Errorf("failed to start gptscript: %w", err)
-			}
-		}
-
 		ctx, cancel := context.WithCancel(context.Background())
-
 		in, _ := io.Pipe()
+
 		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", serverURL)
 		if opts.Env == nil {
 			opts.Env = os.Environ()
 		}
+
 		serverProcess.Env = append(opts.Env[:], opts.toEnv()...)
+
 		serverProcess.Stdin = in
+		stdErr, err := serverProcess.StderrPipe()
+		if err != nil {
+			cancel()
+			return nil, fmt.Errorf("failed to get stderr pipe: %w", err)
+		}
 
 		serverProcessCancel = func() {
 			cancel()
 			_ = in.Close()
+			_ = serverProcess.Wait()
 		}
 
-		if err := serverProcess.Start(); err != nil {
+		if err = serverProcess.Start(); err != nil {
 			serverProcessCancel()
 			return nil, fmt.Errorf("failed to start server: %w", err)
 		}
 
-		timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-		defer cancel()
-		if err := waitForServerReady(timeoutCtx, serverURL); err != nil {
+		serverURL, err = readAddress(stdErr)
+		if err != nil {
 			serverProcessCancel()
-			_ = serverProcess.Wait()
-			return nil, fmt.Errorf("failed to wait for gptscript to be ready: %w", err)
+			return nil, fmt.Errorf("failed to read server URL: %w", err)
 		}
+
+		go func() {
+			for {
+				// Ensure that stdErr is drained as logs come in
+				_, _, _ = bufio.NewReader(stdErr).ReadLine()
+			}
+		}()
+
+		if _, url, found := strings.Cut(serverURL, "addr="); found {
+			// Ensure backwards compatibility with older versions of the SDK server
+			serverURL = url
+		}
+
+		serverURL = strings.TrimSpace(serverURL)
 	}
 	return &GPTScript{url: "http://" + serverURL}, nil
 }
 
-func waitForServerReady(ctx context.Context, serverURL string) error {
-	for {
-		resp, err := http.Get("http://" + serverURL + "/healthz")
-		if err != nil {
-			slog.DebugContext(ctx, "waiting for server to become ready")
-		} else {
-			_ = resp.Body.Close()
-
-			if resp.StatusCode == http.StatusOK {
-				return nil
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(time.Second):
-		}
+func readAddress(stdErr io.Reader) (string, error) {
+	addr, err := bufio.NewReader(stdErr).ReadString('\n')
+	if err != nil {
+		return "", fmt.Errorf("failed to read server address: %w", err)
 	}
+
+	if _, url, found := strings.Cut(addr, "addr="); found {
+		// For backward compatibility: older versions of the SDK server print the address in a slightly different way.
+		addr = url
+	}
+
+	return addr, nil
 }
 
 func (g *GPTScript) Close() {
