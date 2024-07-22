@@ -351,7 +351,12 @@ func TestCredentialOverride(t *testing.T) {
 		t.Fatalf("Error getting working directory: %v", err)
 	}
 
-	run, err := g.Run(context.Background(), wd+"/test/credential-override.gpt", Options{
+	gptscriptFile := "credential-override.gpt"
+	if runtime.GOOS == "windows" {
+		gptscriptFile = "credential-override-windows.gpt"
+	}
+
+	run, err := g.Run(context.Background(), filepath.Join(wd, "test", gptscriptFile), Options{
 		DisableCache: true,
 		CredentialOverrides: []string{
 			"test.ts.credential_override:TEST_CRED=foo",
