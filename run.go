@@ -60,7 +60,7 @@ func (r *Run) State() RunState {
 // Err returns the error that caused the gptscript to fail, if any.
 func (r *Run) Err() error {
 	if r.err != nil {
-		return fmt.Errorf("run encounterd an error: %w with error output: %s", r.err, r.errput)
+		return fmt.Errorf("run encountered an error: %w with error output: %s", r.err, r.errput)
 	}
 	return nil
 }

@@ -39,4 +39,5 @@ type Options struct {
 	Prompt              bool     `json:"prompt"`
 	CredentialOverrides []string `json:"credentialOverrides"`
 	Location            string   `json:"location"`
+	ForceSequential     bool     `json:"forceSequential"`
 }
