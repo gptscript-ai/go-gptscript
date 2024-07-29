@@ -735,62 +735,46 @@ func TestConfirm(t *testing.T) {
 		t.Errorf("Error executing tool: %v", err)
 	}
 
-	// Wait for the confirm event
 	var confirmCallEvent *CallFrame
-	for e := range run.Events() {
-		if e.Call != nil {
-			for _, o := range e.Call.Output {
-				eventContent += o.Content
-			}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
 
-			if e.Call.Type == EventTypeCallConfirm {
-				confirmCallEvent = e.Call
-				break
-			}
-		}
-	}
-
-	if confirmCallEvent == nil {
-		t.Fatalf("No confirm call event")
-	}
-
-	if !strings.Contains(confirmCallEvent.Input, "\"ls\"") {
-		t.Errorf("unexpected confirm input: %s", confirmCallEvent.Input)
-	}
-
-	if err = g.Confirm(context.Background(), AuthResponse{
-		ID:     confirmCallEvent.ID,
-		Accept: true,
-	}); err != nil {
-		t.Errorf("Error confirming: %v", err)
-	}
-
-	// Read the remainder of the events
-	for e := range run.Events() {
-		if e.Call != nil {
-			for _, o := range e.Call.Output {
-				eventContent += o.Content
-			}
-
-			if e.Call.Type == EventTypeCallConfirm {
-				// On Windows, ls may not be recognized as a command. The LLM will try to run the dir command. Confirm it.
-				if !strings.Contains(e.Call.Input, "\"dir\"") {
-					t.Errorf("unexpected confirm input: %s", e.Call.Input)
+		for e := range run.Events() {
+			if e.Call != nil {
+				for _, o := range e.Call.Output {
+					eventContent += o.Content
 				}
 
-				if err = g.Confirm(context.Background(), AuthResponse{
-					ID:     e.Call.ID,
-					Accept: true,
-				}); err != nil {
-					t.Errorf("Error confirming: %v", err)
+				if e.Call.Type == EventTypeCallConfirm {
+					confirmCallEvent = e.Call
+
+					if !strings.Contains(confirmCallEvent.Input, "\"ls") && !strings.Contains(confirmCallEvent.Input, "\"dir") {
+						t.Errorf("unexpected confirm input: %s", confirmCallEvent.Input)
+					}
+
+					// Confirm the call
+					if err = g.Confirm(context.Background(), AuthResponse{
+						ID:     confirmCallEvent.ID,
+						Accept: true,
+					}); err != nil {
+						t.Errorf("Error confirming: %v", err)
+					}
 				}
 			}
 		}
-	}
+	}()
 
 	out, err := run.Text()
 	if err != nil {
 		t.Errorf("Error reading output: %v", err)
+	}
+
+	// Wait for events processing to finish
+	<-done
+
+	if confirmCallEvent == nil {
+		t.Fatalf("No confirm call event")
 	}
 
 	if !strings.Contains(eventContent, "Makefile") || !strings.Contains(eventContent, "README.md") {
