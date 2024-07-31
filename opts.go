@@ -3,10 +3,11 @@ package gptscript
 // GlobalOptions allows specification of settings that are used for every call made.
 // These options can be overridden by the corresponding Options.
 type GlobalOptions struct {
-	OpenAIAPIKey  string   `json:"APIKey"`
-	OpenAIBaseURL string   `json:"BaseURL"`
-	DefaultModel  string   `json:"DefaultModel"`
-	Env           []string `json:"env"`
+	OpenAIAPIKey         string   `json:"APIKey"`
+	OpenAIBaseURL        string   `json:"BaseURL"`
+	DefaultModel         string   `json:"DefaultModel"`
+	DefaultModelProvider string   `json:"DefaultModelProvider"`
+	Env                  []string `json:"env"`
 }
 
 func (g GlobalOptions) toEnv() []string {
@@ -19,6 +20,9 @@ func (g GlobalOptions) toEnv() []string {
 	}
 	if g.DefaultModel != "" {
 		args = append(args, "GPTSCRIPT_SDKSERVER_DEFAULT_MODEL="+g.DefaultModel)
+	}
+	if g.DefaultModelProvider != "" {
+		args = append(args, "GPTSCRIPT_SDKSERVER_DEFAULT_MODEL_PROVIDER="+g.DefaultModelProvider)
 	}
 
 	return args
