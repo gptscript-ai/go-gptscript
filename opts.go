@@ -29,7 +29,7 @@ func (g GlobalOptions) toEnv() []string {
 }
 
 func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
-	result := GlobalOptions{}
+	var result GlobalOptions
 	for _, opt := range opts {
 		result.OpenAIAPIKey = firstSet(opt.OpenAIAPIKey, result.OpenAIAPIKey)
 		result.OpenAIBaseURL = firstSet(opt.OpenAIBaseURL, result.OpenAIBaseURL)
@@ -37,7 +37,7 @@ func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
 		result.DefaultModelProvider = firstSet(opt.DefaultModelProvider, result.DefaultModelProvider)
 		result.Env = append(result.Env, opt.Env...)
 	}
-	return opts[0]
+	return result
 }
 
 func firstSet[T comparable](in ...T) T {
