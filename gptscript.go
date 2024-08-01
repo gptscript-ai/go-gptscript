@@ -29,7 +29,8 @@ type GPTScript struct {
 	globalEnv []string
 }
 
-func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
+func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
+	opt := completeGlobalOptions(opts...)
 	lock.Lock()
 	defer lock.Unlock()
 	gptscriptCount++
@@ -40,18 +41,18 @@ func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
 		serverURL = os.Getenv("GPTSCRIPT_URL")
 	}
 
-	if opts.Env == nil {
-		opts.Env = os.Environ()
+	if opt.Env == nil {
+		opt.Env = os.Environ()
 	}
 
-	opts.Env = append(opts.Env, opts.toEnv()...)
+	opt.Env = append(opt.Env, opt.toEnv()...)
 
 	if serverProcessCancel == nil && !disableServer {
 		ctx, cancel := context.WithCancel(context.Background())
 		in, _ := io.Pipe()
 
 		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", serverURL)
-		serverProcess.Env = opts.Env[:]
+		serverProcess.Env = opt.Env[:]
 
 		serverProcess.Stdin = in
 		stdErr, err := serverProcess.StderrPipe()
@@ -96,7 +97,7 @@ func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
 	}
 
 	if disableServer {
-		g.globalEnv = opts.Env[:]
+		g.globalEnv = opt.Env[:]
 	}
 
 	return g, nil

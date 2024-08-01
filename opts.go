@@ -28,6 +28,29 @@ func (g GlobalOptions) toEnv() []string {
 	return args
 }
 
+func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
+	result := GlobalOptions{}
+	for _, opt := range opts {
+		result.OpenAIAPIKey = firstSet(opt.OpenAIAPIKey, result.OpenAIAPIKey)
+		result.OpenAIBaseURL = firstSet(opt.OpenAIBaseURL, result.OpenAIBaseURL)
+		result.DefaultModel = firstSet(opt.DefaultModel, result.DefaultModel)
+		result.DefaultModelProvider = firstSet(opt.DefaultModelProvider, result.DefaultModelProvider)
+		result.Env = append(result.Env, opt.Env...)
+	}
+	return opts[0]
+}
+
+func firstSet[T comparable](in ...T) T {
+	var result T
+	for _, i := range in {
+		if i != result {
+			return i
+		}
+	}
+
+	return result
+}
+
 // Options represents options for the gptscript tool or file.
 type Options struct {
 	GlobalOptions `json:",inline"`
