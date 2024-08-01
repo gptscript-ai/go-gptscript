@@ -726,7 +726,7 @@ func TestToolWithGlobalTools(t *testing.T) {
 func TestConfirm(t *testing.T) {
 	var eventContent string
 	tools := ToolDef{
-		Instructions: "List the files in the current directory",
+		Instructions: "List all the files in the current directory",
 		Tools:        []string{"sys.exec"},
 	}
 
