@@ -25,7 +25,8 @@ var (
 const relativeToBinaryPath = "<me>"
 
 type GPTScript struct {
-	url string
+	url       string
+	globalEnv []string
 }
 
 func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
@@ -39,16 +40,18 @@ func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
 		serverURL = os.Getenv("GPTSCRIPT_URL")
 	}
 
+	if opts.Env == nil {
+		opts.Env = os.Environ()
+	}
+
+	opts.Env = append(opts.Env, opts.toEnv()...)
+
 	if serverProcessCancel == nil && !disableServer {
 		ctx, cancel := context.WithCancel(context.Background())
 		in, _ := io.Pipe()
 
 		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", serverURL)
-		if opts.Env == nil {
-			opts.Env = os.Environ()
-		}
-
-		serverProcess.Env = append(opts.Env[:], opts.toEnv()...)
+		serverProcess.Env = opts.Env[:]
 
 		serverProcess.Stdin = in
 		stdErr, err := serverProcess.StderrPipe()
@@ -88,7 +91,15 @@ func NewGPTScript(opts GlobalOptions) (*GPTScript, error) {
 
 		serverURL = strings.TrimSpace(serverURL)
 	}
-	return &GPTScript{url: "http://" + serverURL}, nil
+	g := &GPTScript{
+		url: "http://" + serverURL,
+	}
+
+	if disableServer {
+		g.globalEnv = opts.Env[:]
+	}
+
+	return g, nil
 }
 
 func readAddress(stdErr io.Reader) (string, error) {
@@ -117,6 +128,7 @@ func (g *GPTScript) Close() {
 }
 
 func (g *GPTScript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef) (*Run, error) {
+	opts.Env = append(g.globalEnv, opts.Env...)
 	return (&Run{
 		url:         g.url,
 		requestPath: "evaluate",
@@ -127,6 +139,7 @@ func (g *GPTScript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef
 }
 
 func (g *GPTScript) Run(ctx context.Context, toolPath string, opts Options) (*Run, error) {
+	opts.Env = append(g.globalEnv, opts.Env...)
 	return (&Run{
 		url:         g.url,
 		requestPath: "run",
