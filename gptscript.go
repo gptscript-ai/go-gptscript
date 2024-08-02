@@ -2,7 +2,10 @@ package gptscript
 
 import (
 	"bufio"
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -289,4 +292,29 @@ func determineProperCommand(dir, bin string) string {
 
 	slog.Debug("Using gptscript binary: " + bin)
 	return bin
+}
+
+func GetEnv(key, def string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+
+	if strings.HasPrefix(v, `{"_gz":"`) && strings.HasSuffix(v, `"}`) {
+		data, err := base64.StdEncoding.DecodeString(v[8 : len(v)-2])
+		if err != nil {
+			return v
+		}
+		gz, err := gzip.NewReader(bytes.NewBuffer(data))
+		if err != nil {
+			return v
+		}
+		strBytes, err := io.ReadAll(gz)
+		if err != nil {
+			return v
+		}
+		return string(strBytes)
+	}
+
+	return v
 }
