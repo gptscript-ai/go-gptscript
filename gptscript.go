@@ -150,9 +150,18 @@ func (g *GPTScript) Run(ctx context.Context, toolPath string, opts Options) (*Ru
 	}).NextChat(ctx, opts.Input)
 }
 
+type ParseOptions struct {
+	DisableCache bool
+}
+
 // Parse will parse the given file into an array of Nodes.
-func (g *GPTScript) Parse(ctx context.Context, fileName string) ([]Node, error) {
-	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"file": fileName})
+func (g *GPTScript) Parse(ctx context.Context, fileName string, opts ...ParseOptions) ([]Node, error) {
+	var disableCache bool
+	for _, opt := range opts {
+		disableCache = disableCache || opt.DisableCache
+	}
+
+	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"file": fileName, "disableCache": disableCache})
 	if err != nil {
 		return nil, err
 	}
