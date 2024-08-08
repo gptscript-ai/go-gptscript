@@ -404,6 +404,42 @@ func TestParseSimpleFile(t *testing.T) {
 	}
 }
 
+func TestParseFileWithMetadata(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	tools, err := g.Parse(context.Background(), wd+"/test/parse-with-metadata.gpt")
+	if err != nil {
+		t.Errorf("Error parsing file: %v", err)
+	}
+
+	if len(tools) != 2 {
+		t.Fatalf("Unexpected number of tools: %d", len(tools))
+	}
+
+	if tools[0].ToolNode == nil {
+		t.Fatalf("No tool node found")
+	}
+
+	if !strings.Contains(tools[0].ToolNode.Tool.Instructions, "requests.get(") {
+		t.Errorf("Unexpected instructions: %s", tools[0].ToolNode.Tool.Instructions)
+	}
+
+	if tools[0].ToolNode.Tool.MetaData["requirements.txt"] != "requests" {
+		t.Errorf("Unexpected metadata: %s", tools[0].ToolNode.Tool.MetaData["requirements.txt"])
+	}
+
+	if tools[1].TextNode == nil {
+		t.Fatalf("No text node found")
+	}
+
+	if tools[1].TextNode.Fmt != "metadata:foo:requirements.txt" {
+		t.Errorf("Unexpected text: %s", tools[1].TextNode.Fmt)
+	}
+}
+
 func TestParseTool(t *testing.T) {
 	tools, err := g.ParseTool(context.Background(), "echo hello")
 	if err != nil {
@@ -1067,5 +1103,26 @@ func TestGetEnv(t *testing.T) {
 				t.Errorf("expected: %s, got: %s", test.expectedResult, result)
 			}
 		})
+	}
+}
+
+func TestRunPythonWithMetadata(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	run, err := g.Run(context.Background(), wd+"/test/parse-with-metadata.gpt", Options{IncludeEvents: true})
+	if err != nil {
+		t.Fatalf("Error executing file: %v", err)
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Fatalf("Error reading output: %v", err)
+	}
+
+	if out != "200" {
+		t.Errorf("Unexpected output: %s", out)
 	}
 }

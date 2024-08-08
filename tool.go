@@ -29,6 +29,7 @@ type ToolDef struct {
 	Agents          []string         `json:"agents,omitempty"`
 	Credentials     []string         `json:"credentials,omitempty"`
 	Instructions    string           `json:"instructions,omitempty"`
+	Type            string           `json:"type,omitempty"`
 }
 
 func ObjectSchema(kv ...string) *openapi3.Schema {
@@ -86,6 +87,7 @@ type Tool struct {
 	ID          string                     `json:"id,omitempty"`
 	Arguments   *openapi3.Schema           `json:"arguments,omitempty"`
 	ToolMapping map[string][]ToolReference `json:"toolMapping,omitempty"`
+	MetaData    map[string]string          `json:"metadata,omitempty"`
 	LocalTools  map[string]string          `json:"localTools,omitempty"`
 	Source      ToolSource                 `json:"source,omitempty"`
 	WorkingDir  string                     `json:"workingDir,omitempty"`
