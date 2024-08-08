@@ -667,8 +667,8 @@ func TestFileChat(t *testing.T) {
 	}
 	inputs := []string{
 		"List the 3 largest of the Great Lakes by volume.",
-		"What is the volume of the second one in cubic miles?",
-		"What is the total area of the third one in square miles?",
+		"What is the volume of the second in the list in cubic miles?",
+		"What is the total area of the third in the list in square miles?",
 	}
 
 	expectedOutputs := []string{
@@ -1113,6 +1113,32 @@ func TestRunPythonWithMetadata(t *testing.T) {
 	}
 
 	run, err := g.Run(context.Background(), wd+"/test/parse-with-metadata.gpt", Options{IncludeEvents: true})
+	if err != nil {
+		t.Fatalf("Error executing file: %v", err)
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Fatalf("Error reading output: %v", err)
+	}
+
+	if out != "200" {
+		t.Errorf("Unexpected output: %s", out)
+	}
+}
+
+func TestParseThenEvaluateWithMetadata(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	tools, err := g.Parse(context.Background(), wd+"/test/parse-with-metadata.gpt")
+	if err != nil {
+		t.Fatalf("Error parsing file: %v", err)
+	}
+
+	run, err := g.Evaluate(context.Background(), Options{}, tools[0].ToolNode.Tool.ToolDef)
 	if err != nil {
 		t.Fatalf("Error executing file: %v", err)
 	}
