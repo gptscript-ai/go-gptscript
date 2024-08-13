@@ -146,7 +146,7 @@ func TestEvaluateWithContext(t *testing.T) {
 
 	tool := ToolDef{
 		Instructions: "What is the capital of the united states?",
-		Context: []string{
+		Tools: []string{
 			wd + "/test/acorn-labs-context.gpt",
 		},
 	}
@@ -342,6 +342,47 @@ func TestStreamRun(t *testing.T) {
 
 	if len(run.ErrorOutput()) != 0 {
 		t.Error("Should have no stderr output")
+	}
+}
+
+func TestRestartFailedRun(t *testing.T) {
+	shebang := "#!/bin/bash"
+	instructions := "%s\nexit ${EXIT_CODE}"
+	if runtime.GOOS == "windows" {
+		shebang = "#!/usr/bin/env powershell.exe"
+		instructions = "%s\nexit $env:EXIT_CODE"
+	}
+	instructions = fmt.Sprintf(instructions, shebang)
+	tools := []ToolDef{
+		{
+			Instructions: "say hello",
+			Tools:        []string{"my-context"},
+		},
+		{
+			Name:         "my-context",
+			Type:         "context",
+			Instructions: instructions,
+		},
+	}
+	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, GlobalOptions: GlobalOptions{Env: []string{"EXIT_CODE=1"}}}, tools...)
+	if err != nil {
+		t.Fatalf("Error executing tool: %v", err)
+	}
+
+	_, err = run.Text()
+	if err == nil {
+		t.Errorf("Expected error but got nil")
+	}
+
+	run.opts.GlobalOptions.Env = nil
+	run, err = run.NextChat(context.Background(), "")
+	if err != nil {
+		t.Fatalf("Error executing next run: %v", err)
+	}
+
+	_, err = run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
 	}
 }
 
