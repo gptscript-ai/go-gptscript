@@ -445,6 +445,22 @@ func TestParseSimpleFile(t *testing.T) {
 	}
 }
 
+func TestParseEmptyFile(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	tools, err := g.Parse(context.Background(), wd+"/test/empty.gpt")
+	if err != nil {
+		t.Errorf("Error parsing file: %v", err)
+	}
+
+	if len(tools) != 0 {
+		t.Fatalf("Unexpected number of tools: %d", len(tools))
+	}
+}
+
 func TestParseFileWithMetadata(t *testing.T) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -497,6 +513,17 @@ func TestParseTool(t *testing.T) {
 
 	if tools[0].ToolNode.Tool.Instructions != "echo hello" {
 		t.Errorf("Unexpected instructions: %s", tools[0].ToolNode.Tool.Instructions)
+	}
+}
+
+func TestEmptyParseTool(t *testing.T) {
+	tools, err := g.ParseTool(context.Background(), "")
+	if err != nil {
+		t.Errorf("Error parsing tool: %v", err)
+	}
+
+	if len(tools) != 0 {
+		t.Fatalf("Unexpected number of tools: %d", len(tools))
 	}
 }
 
