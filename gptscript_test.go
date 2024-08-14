@@ -498,7 +498,7 @@ func TestParseFileWithMetadata(t *testing.T) {
 }
 
 func TestParseTool(t *testing.T) {
-	tools, err := g.ParseTool(context.Background(), "echo hello")
+	tools, err := g.ParseContent(context.Background(), "echo hello")
 	if err != nil {
 		t.Errorf("Error parsing tool: %v", err)
 	}
@@ -517,7 +517,7 @@ func TestParseTool(t *testing.T) {
 }
 
 func TestEmptyParseTool(t *testing.T) {
-	tools, err := g.ParseTool(context.Background(), "")
+	tools, err := g.ParseContent(context.Background(), "")
 	if err != nil {
 		t.Errorf("Error parsing tool: %v", err)
 	}
@@ -528,7 +528,7 @@ func TestEmptyParseTool(t *testing.T) {
 }
 
 func TestParseToolWithTextNode(t *testing.T) {
-	tools, err := g.ParseTool(context.Background(), "echo hello\n---\n!markdown\nhello")
+	tools, err := g.ParseContent(context.Background(), "echo hello\n---\n!markdown\nhello")
 	if err != nil {
 		t.Errorf("Error parsing tool: %v", err)
 	}
@@ -735,8 +735,8 @@ func TestFileChat(t *testing.T) {
 	}
 	inputs := []string{
 		"List the 3 largest of the Great Lakes by volume.",
-		"What is the volume of the second in the list in cubic miles?",
-		"What is the total area of the third in the list in square miles?",
+		"For the second one in the list: what is the volume cubic miles?",
+		"For the third one in the list: what is the total area in square miles?",
 	}
 
 	expectedOutputs := []string{
@@ -1218,5 +1218,117 @@ func TestParseThenEvaluateWithMetadata(t *testing.T) {
 
 	if out != "200" {
 		t.Errorf("Unexpected output: %s", out)
+	}
+}
+
+func TestLoadFile(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	prg, err := g.LoadFile(context.Background(), wd+"/test/global-tools.gpt")
+	if err != nil {
+		t.Fatalf("Error loading file: %v", err)
+	}
+
+	if prg.EntryToolID == "" {
+		t.Errorf("Unexpected entry tool ID: %s", prg.EntryToolID)
+	}
+
+	if len(prg.ToolSet) == 0 {
+		t.Errorf("Unexpected number of tools: %d", len(prg.ToolSet))
+	}
+
+	if prg.Name == "" {
+		t.Errorf("Unexpected name: %s", prg.Name)
+	}
+}
+
+func TestLoadRemoteFile(t *testing.T) {
+	prg, err := g.LoadFile(context.Background(), "github.com/gptscript-ai/context/workspace")
+	if err != nil {
+		t.Fatalf("Error loading file: %v", err)
+	}
+
+	if prg.EntryToolID == "" {
+		t.Errorf("Unexpected entry tool ID: %s", prg.EntryToolID)
+	}
+
+	if len(prg.ToolSet) == 0 {
+		t.Errorf("Unexpected number of tools: %d", len(prg.ToolSet))
+	}
+
+	if prg.Name == "" {
+		t.Errorf("Unexpected name: %s", prg.Name)
+	}
+}
+
+func TestLoadContent(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	content, err := os.ReadFile(wd + "/test/global-tools.gpt")
+	if err != nil {
+		t.Fatalf("Error reading file: %v", err)
+	}
+
+	prg, err := g.LoadContent(context.Background(), string(content))
+	if err != nil {
+		t.Fatalf("Error loading file: %v", err)
+	}
+
+	if prg.EntryToolID == "" {
+		t.Errorf("Unexpected entry tool ID: %s", prg.EntryToolID)
+	}
+
+	if len(prg.ToolSet) == 0 {
+		t.Errorf("Unexpected number of tools: %d", len(prg.ToolSet))
+	}
+
+	// Name won't be set in this case
+	if prg.Name != "" {
+		t.Errorf("Unexpected name: %s", prg.Name)
+	}
+}
+
+func TestLoadTools(t *testing.T) {
+	tools := []ToolDef{
+		{
+			Tools:        []string{"echo"},
+			Instructions: "echo 'hello there'",
+		},
+		{
+			Name:         "other",
+			Tools:        []string{"echo"},
+			Instructions: "echo 'hello somewhere else'",
+		},
+		{
+			Name:         "echo",
+			Tools:        []string{"sys.exec"},
+			Description:  "Echoes the input",
+			Arguments:    ObjectSchema("input", "The string input to echo"),
+			Instructions: "#!/bin/bash\n echo ${input}",
+		},
+	}
+
+	prg, err := g.LoadTools(context.Background(), tools)
+	if err != nil {
+		t.Fatalf("Error loading file: %v", err)
+	}
+
+	if prg.EntryToolID == "" {
+		t.Errorf("Unexpected entry tool ID: %s", prg.EntryToolID)
+	}
+
+	if len(prg.ToolSet) == 0 {
+		t.Errorf("Unexpected number of tools: %d", len(prg.ToolSet))
+	}
+
+	// Name won't be set in this case
+	if prg.Name != "" {
+		t.Errorf("Unexpected name: %s", prg.Name)
 	}
 }

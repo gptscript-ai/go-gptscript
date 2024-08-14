@@ -181,8 +181,8 @@ func (g *GPTScript) Parse(ctx context.Context, fileName string, opts ...ParseOpt
 	return doc.Nodes, nil
 }
 
-// ParseTool will parse the given string into a tool.
-func (g *GPTScript) ParseTool(ctx context.Context, toolDef string) ([]Node, error) {
+// ParseContent will parse the given string into a tool.
+func (g *GPTScript) ParseContent(ctx context.Context, toolDef string) ([]Node, error) {
 	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"content": toolDef})
 	if err != nil {
 		return nil, err
@@ -212,6 +212,53 @@ func (g *GPTScript) Fmt(ctx context.Context, nodes []Node) (string, error) {
 	}
 
 	return out, nil
+}
+
+type LoadOptions struct {
+	DisableCache bool
+	SubTool      string
+}
+
+// LoadFile will load the given file into a Program.
+func (g *GPTScript) LoadFile(ctx context.Context, fileName string, opts ...LoadOptions) (*Program, error) {
+	return g.load(ctx, map[string]any{"file": fileName}, opts...)
+}
+
+// LoadContent will load the given content into a Program.
+func (g *GPTScript) LoadContent(ctx context.Context, content string, opts ...LoadOptions) (*Program, error) {
+	return g.load(ctx, map[string]any{"content": content}, opts...)
+}
+
+// LoadTools will load the given tools into a Program.
+func (g *GPTScript) LoadTools(ctx context.Context, toolDefs []ToolDef, opts ...LoadOptions) (*Program, error) {
+	return g.load(ctx, map[string]any{"toolDefs": toolDefs}, opts...)
+}
+
+func (g *GPTScript) load(ctx context.Context, payload map[string]any, opts ...LoadOptions) (*Program, error) {
+	for _, opt := range opts {
+		if opt.DisableCache {
+			payload["disableCache"] = true
+		}
+		if opt.SubTool != "" {
+			payload["subTool"] = opt.SubTool
+		}
+	}
+
+	out, err := g.runBasicCommand(ctx, "load", payload)
+	if err != nil {
+		return nil, err
+	}
+
+	type loadResponse struct {
+		Program *Program `json:"program"`
+	}
+
+	prg := new(loadResponse)
+	if err = json.Unmarshal([]byte(out), prg); err != nil {
+		return nil, err
+	}
+
+	return prg.Program, nil
 }
 
 // Version will return the output of `gptscript --version`
