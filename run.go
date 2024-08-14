@@ -371,7 +371,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 							r.callsLock.Unlock()
 						} else if event.Run.Type == EventTypeRunFinish && event.Run.Error != "" {
 							r.state = Error
-							r.err = fmt.Errorf(event.Run.Error)
+							r.err = fmt.Errorf("%s", event.Run.Error)
 						}
 					}
 
