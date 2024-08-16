@@ -49,7 +49,6 @@ jobs:
       - name: Install gptscript
         run: |
           curl https://get.gptscript.ai/releases/default_windows_amd64_v1/gptscript.exe -o gptscript.exe
-      - name: Create config file
       - name: Run Tests
         env:
           GPTSCRIPT_BIN: .\gptscript.exe

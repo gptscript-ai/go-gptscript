@@ -28,8 +28,8 @@ var (
 const relativeToBinaryPath = "<me>"
 
 type GPTScript struct {
-	url       string
-	globalEnv []string
+	url        string
+	globalOpts GlobalOptions
 }
 
 func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
@@ -40,7 +40,7 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 
 	disableServer := os.Getenv("GPTSCRIPT_DISABLE_SERVER") == "true"
 
-	if serverURL == "" && disableServer {
+	if serverURL == "" {
 		serverURL = os.Getenv("GPTSCRIPT_URL")
 	}
 
@@ -96,11 +96,8 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 		serverURL = strings.TrimSpace(serverURL)
 	}
 	g := &GPTScript{
-		url: "http://" + serverURL,
-	}
-
-	if disableServer {
-		g.globalEnv = opt.Env[:]
+		url:        "http://" + serverURL,
+		globalOpts: opt,
 	}
 
 	return g, nil
@@ -132,7 +129,7 @@ func (g *GPTScript) Close() {
 }
 
 func (g *GPTScript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef) (*Run, error) {
-	opts.Env = append(g.globalEnv, opts.Env...)
+	opts.GlobalOptions = completeGlobalOptions(g.globalOpts, opts.GlobalOptions)
 	return (&Run{
 		url:         g.url,
 		requestPath: "evaluate",
@@ -143,7 +140,7 @@ func (g *GPTScript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef
 }
 
 func (g *GPTScript) Run(ctx context.Context, toolPath string, opts Options) (*Run, error) {
-	opts.Env = append(g.globalEnv, opts.Env...)
+	opts.GlobalOptions = completeGlobalOptions(g.globalOpts, opts.GlobalOptions)
 	return (&Run{
 		url:         g.url,
 		requestPath: "run",
@@ -281,9 +278,28 @@ func (g *GPTScript) ListTools(ctx context.Context) (string, error) {
 	return out, nil
 }
 
+type ListModelsOptions struct {
+	Providers           []string
+	CredentialOverrides []string
+}
+
 // ListModels will list all the available models.
-func (g *GPTScript) ListModels(ctx context.Context) ([]string, error) {
-	out, err := g.runBasicCommand(ctx, "list-models", nil)
+func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) ([]string, error) {
+	var o ListModelsOptions
+	for _, opt := range opts {
+		o.Providers = append(o.Providers, opt.Providers...)
+		o.CredentialOverrides = append(o.CredentialOverrides, opt.CredentialOverrides...)
+	}
+
+	if g.globalOpts.DefaultModelProvider != "" {
+		o.Providers = append(o.Providers, g.globalOpts.DefaultModelProvider)
+	}
+
+	out, err := g.runBasicCommand(ctx, "list-models", map[string]any{
+		"providers":           o.Providers,
+		"env":                 g.globalOpts.Env,
+		"credentialOverrides": o.CredentialOverrides,
+	})
 	if err != nil {
 		return nil, err
 	}
