@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           cache: false
-          go-version: "1.22"
+          go-version: "1.23"
       - name: Validate
         run: make validate
       - name: Install gptscript
@@ -32,6 +32,7 @@ jobs:
         env:
           GPTSCRIPT_BIN: ./gptscriptexe
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: make test
 
   test-windows:
@@ -44,16 +45,14 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           cache: false
-          go-version: "1.22"
+          go-version: "1.23"
       - name: Install gptscript
         run: |
           curl https://get.gptscript.ai/releases/default_windows_amd64_v1/gptscript.exe -o gptscript.exe
       - name: Create config file
-        run: |
-          echo '{"credsStore":"file"}' > config
       - name: Run Tests
         env:
           GPTSCRIPT_BIN: .\gptscript.exe
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          GPTSCRIPT_CONFIG_FILE: .\config
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: make test
