@@ -19,14 +19,22 @@ func TestMain(m *testing.M) {
 		panic("OPENAI_API_KEY or GPTSCRIPT_URL environment variable must be set")
 	}
 
-	var err error
+	// Start an initial GPTScript instance.
+	// This one doesn't have any options, but it's there to ensure that using another instance works as expected in all cases.
+	gFirst, err := NewGPTScript(GlobalOptions{})
+	if err != nil {
+		panic(fmt.Sprintf("error creating gptscript: %s", err))
+	}
+
 	g, err = NewGPTScript(GlobalOptions{OpenAIAPIKey: os.Getenv("OPENAI_API_KEY")})
 	if err != nil {
+		gFirst.Close()
 		panic(fmt.Sprintf("error creating gptscript: %s", err))
 	}
 
 	exitCode := m.Run()
 	g.Close()
+	gFirst.Close()
 	os.Exit(exitCode)
 }
 
@@ -77,6 +85,59 @@ func TestListModels(t *testing.T) {
 
 	if len(models) == 0 {
 		t.Error("No models found")
+	}
+}
+
+func TestListModelsWithProvider(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+	models, err := g.ListModels(context.Background(), ListModelsOptions{
+		Providers:           []string{"github.com/gptscript-ai/claude3-anthropic-provider"},
+		CredentialOverrides: []string{"github.com/gptscript-ai/claude3-anthropic-provider/credential:ANTHROPIC_API_KEY"},
+	})
+	if err != nil {
+		t.Errorf("Error listing models: %v", err)
+	}
+
+	if len(models) == 0 {
+		t.Error("No models found")
+	}
+
+	for _, model := range models {
+		if !strings.HasPrefix(model, "claude-3-") || !strings.HasSuffix(model, "from github.com/gptscript-ai/claude3-anthropic-provider") {
+			t.Errorf("Unexpected model name: %s", model)
+		}
+	}
+}
+
+func TestListModelsWithDefaultProvider(t *testing.T) {
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		t.Skip("ANTHROPIC_API_KEY not set")
+	}
+	g, err := NewGPTScript(GlobalOptions{
+		DefaultModelProvider: "github.com/gptscript-ai/claude3-anthropic-provider",
+	})
+	if err != nil {
+		t.Fatalf("Error creating gptscript: %v", err)
+	}
+	defer g.Close()
+
+	models, err := g.ListModels(context.Background(), ListModelsOptions{
+		CredentialOverrides: []string{"github.com/gptscript-ai/claude3-anthropic-provider/credential:ANTHROPIC_API_KEY"},
+	})
+	if err != nil {
+		t.Errorf("Error listing models: %v", err)
+	}
+
+	if len(models) == 0 {
+		t.Error("No models found")
+	}
+
+	for _, model := range models {
+		if !strings.HasPrefix(model, "claude-3-") || !strings.HasSuffix(model, "from github.com/gptscript-ai/claude3-anthropic-provider") {
+			t.Errorf("Unexpected model name: %s", model)
+		}
 	}
 }
 
