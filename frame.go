@@ -104,16 +104,18 @@ type InputContext struct {
 }
 
 type PromptFrame struct {
-	ID        string    `json:"id,omitempty"`
-	Type      EventType `json:"type,omitempty"`
-	Time      time.Time `json:"time,omitempty"`
-	Message   string    `json:"message,omitempty"`
-	Fields    []string  `json:"fields,omitempty"`
-	Sensitive bool      `json:"sensitive,omitempty"`
+	ID        string            `json:"id,omitempty"`
+	Type      EventType         `json:"type,omitempty"`
+	Time      time.Time         `json:"time,omitempty"`
+	Message   string            `json:"message,omitempty"`
+	Fields    []string          `json:"fields,omitempty"`
+	Sensitive bool              `json:"sensitive,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
 }
 
 func (p *PromptFrame) String() string {
 	return fmt.Sprintf(`Message: %s
 Fields: %v
-Sensitive: %v`, p.Message, p.Fields, p.Sensitive)
+Sensitive: %v`, p.Message, p.Fields, p.Sensitive,
+	)
 }
