@@ -1107,6 +1107,68 @@ func TestPrompt(t *testing.T) {
 	}
 }
 
+func TestPromptWithMetadata(t *testing.T) {
+	run, err := g.Run(context.Background(), "sys.prompt", Options{IncludeEvents: true, Prompt: true, Input: `{"fields":"first name","metadata":{"key":"value"}}`})
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	// Wait for the prompt event
+	var promptFrame *PromptFrame
+	for e := range run.Events() {
+		if e.Prompt != nil {
+			if e.Prompt.Type == EventTypePrompt {
+				promptFrame = e.Prompt
+				break
+			}
+		}
+	}
+
+	if promptFrame == nil {
+		t.Fatalf("No prompt call event")
+	}
+
+	if promptFrame.Sensitive {
+		t.Errorf("Unexpected sensitive prompt event: %v", promptFrame.Sensitive)
+	}
+
+	if len(promptFrame.Fields) != 1 {
+		t.Fatalf("Unexpected number of fields: %d", len(promptFrame.Fields))
+	}
+
+	if promptFrame.Fields[0] != "first name" {
+		t.Errorf("Unexpected field: %s", promptFrame.Fields[0])
+	}
+
+	if promptFrame.Metadata["key"] != "value" {
+		t.Errorf("Unexpected metadata: %v", promptFrame.Metadata)
+	}
+
+	if err = g.PromptResponse(context.Background(), PromptResponse{
+		ID:        promptFrame.ID,
+		Responses: map[string]string{promptFrame.Fields[0]: "Clicky"},
+	}); err != nil {
+		t.Errorf("Error responding: %v", err)
+	}
+
+	// Read the remainder of the events
+	for range run.Events() {
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if !strings.Contains(out, "Clicky") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+
+	if len(run.ErrorOutput()) != 0 {
+		t.Errorf("Should have no stderr output: %v", run.ErrorOutput())
+	}
+}
+
 func TestPromptWithoutPromptAllowed(t *testing.T) {
 	tools := ToolDef{
 		Instructions: "Use the sys.prompt user to ask the user for 'first name' which is not sensitive. After you get their first name, say hello.",
