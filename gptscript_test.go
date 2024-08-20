@@ -984,6 +984,7 @@ func TestConfirmDeny(t *testing.T) {
 
 	if confirmCallEvent == nil {
 		t.Fatalf("No confirm call event")
+		return
 	}
 
 	if !strings.Contains(confirmCallEvent.Input, "\"ls\"") {
@@ -1055,6 +1056,7 @@ func TestPrompt(t *testing.T) {
 
 	if promptFrame == nil {
 		t.Fatalf("No prompt call event")
+		return
 	}
 
 	if promptFrame.Sensitive {
@@ -1126,6 +1128,7 @@ func TestPromptWithMetadata(t *testing.T) {
 
 	if promptFrame == nil {
 		t.Fatalf("No prompt call event")
+		return
 	}
 
 	if promptFrame.Sensitive {
@@ -1152,6 +1155,7 @@ func TestPromptWithMetadata(t *testing.T) {
 	}
 
 	// Read the remainder of the events
+	//nolint:revive
 	for range run.Events() {
 	}
 
