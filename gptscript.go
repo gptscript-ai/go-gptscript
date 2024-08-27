@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -28,7 +29,6 @@ var (
 const relativeToBinaryPath = "<me>"
 
 type GPTScript struct {
-	url        string
 	globalOpts GlobalOptions
 }
 
@@ -38,10 +38,11 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 	defer lock.Unlock()
 	gptscriptCount++
 
-	disableServer := os.Getenv("GPTSCRIPT_DISABLE_SERVER") == "true"
-
 	if serverURL == "" {
-		serverURL = os.Getenv("GPTSCRIPT_URL")
+		serverURL = opt.URL
+		if serverURL == "" {
+			serverURL = os.Getenv("GPTSCRIPT_URL")
+		}
 	}
 
 	if opt.Env == nil {
@@ -50,11 +51,31 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 
 	opt.Env = append(opt.Env, opt.toEnv()...)
 
-	if serverProcessCancel == nil && !disableServer {
+	if serverProcessCancel == nil && os.Getenv("GPTSCRIPT_DISABLE_SERVER") != "true" {
+		if serverURL != "" {
+			u, err := url.Parse(serverURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse server URL: %w", err)
+			}
+
+			// If the server URL has a path, then this implies that the server is already running.
+			// In that case, we don't need to start the server.
+			if u.Path != "" && u.Path != "/" {
+				opt.URL = serverURL
+				if !strings.HasPrefix(opt.URL, "http://") && !strings.HasPrefix(opt.URL, "https://") {
+					opt.URL = "http://" + opt.URL
+				}
+
+				return &GPTScript{
+					globalOpts: opt,
+				}, nil
+			}
+		}
+
 		ctx, cancel := context.WithCancel(context.Background())
 		in, _ := io.Pipe()
 
-		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", serverURL)
+		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", strings.TrimPrefix(serverURL, "http://"))
 		serverProcess.Env = opt.Env[:]
 
 		serverProcess.Stdin = in
@@ -95,12 +116,14 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 
 		serverURL = strings.TrimSpace(serverURL)
 	}
-	g := &GPTScript{
-		url:        "http://" + serverURL,
-		globalOpts: opt,
-	}
 
-	return g, nil
+	opt.URL = serverURL
+	if !strings.HasPrefix(opt.URL, "http://") && !strings.HasPrefix(opt.URL, "https://") {
+		opt.URL = "http://" + opt.URL
+	}
+	return &GPTScript{
+		globalOpts: opt,
+	}, nil
 }
 
 func readAddress(stdErr io.Reader) (string, error) {
@@ -117,6 +140,10 @@ func readAddress(stdErr io.Reader) (string, error) {
 	return addr, nil
 }
 
+func (g *GPTScript) URL() string {
+	return g.globalOpts.URL
+}
+
 func (g *GPTScript) Close() {
 	lock.Lock()
 	defer lock.Unlock()
@@ -131,7 +158,8 @@ func (g *GPTScript) Close() {
 func (g *GPTScript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef) (*Run, error) {
 	opts.GlobalOptions = completeGlobalOptions(g.globalOpts, opts.GlobalOptions)
 	return (&Run{
-		url:         g.url,
+		url:         opts.URL,
+		token:       opts.Token,
 		requestPath: "evaluate",
 		state:       Creating,
 		opts:        opts,
@@ -142,7 +170,8 @@ func (g *GPTScript) Evaluate(ctx context.Context, opts Options, tools ...ToolDef
 func (g *GPTScript) Run(ctx context.Context, toolPath string, opts Options) (*Run, error) {
 	opts.GlobalOptions = completeGlobalOptions(g.globalOpts, opts.GlobalOptions)
 	return (&Run{
-		url:         g.url,
+		url:         opts.URL,
+		token:       opts.Token,
 		requestPath: "run",
 		state:       Creating,
 		opts:        opts,
@@ -309,7 +338,7 @@ func (g *GPTScript) PromptResponse(ctx context.Context, resp PromptResponse) err
 
 func (g *GPTScript) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
 	run := &Run{
-		url:          g.url,
+		url:          g.globalOpts.URL,
 		requestPath:  requestPath,
 		state:        Creating,
 		basicCommand: true,

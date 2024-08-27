@@ -3,6 +3,8 @@ package gptscript
 // GlobalOptions allows specification of settings that are used for every call made.
 // These options can be overridden by the corresponding Options.
 type GlobalOptions struct {
+	URL                  string   `json:"url"`
+	Token                string   `json:"token"`
 	OpenAIAPIKey         string   `json:"APIKey"`
 	OpenAIBaseURL        string   `json:"BaseURL"`
 	DefaultModel         string   `json:"DefaultModel"`
@@ -33,6 +35,8 @@ func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
 	var result GlobalOptions
 	for _, opt := range opts {
 		result.CacheDir = firstSet(opt.CacheDir, result.CacheDir)
+		result.URL = firstSet(opt.URL, result.URL)
+		result.Token = firstSet(opt.Token, result.Token)
 		result.OpenAIAPIKey = firstSet(opt.OpenAIAPIKey, result.OpenAIAPIKey)
 		result.OpenAIBaseURL = firstSet(opt.OpenAIBaseURL, result.OpenAIBaseURL)
 		result.DefaultModel = firstSet(opt.DefaultModel, result.DefaultModel)
