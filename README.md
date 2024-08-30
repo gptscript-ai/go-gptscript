@@ -47,32 +47,6 @@ As noted above, the Global Options are also available to specify here. These opt
 
 ## Functions
 
-### listTools
-
-Lists all the available built-in tools.
-
-**Usage:**
-
-```go
-package main
-
-import (
-	"context"
-
-	"github.com/gptscript-ai/go-gptscript"
-)
-
-func listTools(ctx context.Context) (string, error) {
-	g, err := gptscript.NewGPTScript(gptscript.GlobalOptions{})
-	if err != nil {
-		return "", err
-	}
-	defer g.Close()
-
-	return g.ListTools(ctx)
-}
-```
-
 ### listModels
 
 Lists all the available models, returns a list.

@@ -66,17 +66,6 @@ func TestVersion(t *testing.T) {
 	}
 }
 
-func TestListTools(t *testing.T) {
-	tools, err := g.ListTools(context.Background())
-	if err != nil {
-		t.Errorf("Error listing tools: %v", err)
-	}
-
-	if len(tools) == 0 {
-		t.Error("No tools found")
-	}
-}
-
 func TestListModels(t *testing.T) {
 	models, err := g.ListModels(context.Background())
 	if err != nil {

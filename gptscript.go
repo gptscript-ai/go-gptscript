@@ -268,16 +268,6 @@ func (g *GPTScript) Version(ctx context.Context) (string, error) {
 	return out, nil
 }
 
-// ListTools will list all the available tools.
-func (g *GPTScript) ListTools(ctx context.Context) (string, error) {
-	out, err := g.runBasicCommand(ctx, "list-tools", nil)
-	if err != nil {
-		return "", err
-	}
-
-	return out, nil
-}
-
 type ListModelsOptions struct {
 	Providers           []string
 	CredentialOverrides []string
