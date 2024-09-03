@@ -785,8 +785,8 @@ func TestFileChat(t *testing.T) {
 	}
 	inputs := []string{
 		"List the 3 largest of the Great Lakes by volume.",
-		"For the second one in the list: what is the volume cubic miles?",
-		"For the third one in the list: what is the total area in square miles?",
+		"What is the second one in the list?",
+		"What is the third?",
 	}
 
 	expectedOutputs := []string{
