@@ -7,6 +7,7 @@ type GlobalOptions struct {
 	OpenAIBaseURL        string   `json:"BaseURL"`
 	DefaultModel         string   `json:"DefaultModel"`
 	DefaultModelProvider string   `json:"DefaultModelProvider"`
+	CacheDir             string   `json:"CacheDir"`
 	Env                  []string `json:"env"`
 }
 
@@ -31,6 +32,7 @@ func (g GlobalOptions) toEnv() []string {
 func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
 	var result GlobalOptions
 	for _, opt := range opts {
+		result.CacheDir = firstSet(opt.CacheDir, result.CacheDir)
 		result.OpenAIAPIKey = firstSet(opt.OpenAIAPIKey, result.OpenAIAPIKey)
 		result.OpenAIBaseURL = firstSet(opt.OpenAIBaseURL, result.OpenAIBaseURL)
 		result.DefaultModel = firstSet(opt.DefaultModel, result.DefaultModel)
@@ -55,10 +57,9 @@ func firstSet[T comparable](in ...T) T {
 type Options struct {
 	GlobalOptions `json:",inline"`
 
+	DisableCache        bool     `json:"disableCache"`
 	Confirm             bool     `json:"confirm"`
 	Input               string   `json:"input"`
-	DisableCache        bool     `json:"disableCache"`
-	CacheDir            string   `json:"cacheDir"`
 	SubTool             string   `json:"subTool"`
 	Workspace           string   `json:"workspace"`
 	ChatState           string   `json:"chatState"`

@@ -24,6 +24,7 @@ The GPTScript instance allows the caller to run gptscript files, tools, and othe
 
 When creating a `GTPScript` instance, you can pass the following global options. These options are also available as run `Options`. Anything specified as a run option will take precedence over the global option.
 
+- `CacheDir`: The directory to use for caching. Default (""), which uses the default cache directory.
 - `APIKey`: Specify an OpenAI API key for authenticating requests
 - `BaseURL`: A base URL for an OpenAI compatible API (the default is `https://api.openai.com/v1`)
 - `DefaultModel`: The default model to use for chat completion requests

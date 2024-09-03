@@ -414,7 +414,7 @@ func TestRestartFailedRun(t *testing.T) {
 			Instructions: instructions,
 		},
 	}
-	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, GlobalOptions: GlobalOptions{Env: []string{"EXIT_CODE=1"}}}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{GlobalOptions: GlobalOptions{Env: []string{"EXIT_CODE=1"}}, DisableCache: true}, tools...)
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
@@ -785,8 +785,8 @@ func TestFileChat(t *testing.T) {
 	}
 	inputs := []string{
 		"List the 3 largest of the Great Lakes by volume.",
-		"For the second one in the list: what is the volume cubic miles?",
-		"For the third one in the list: what is the total area in square miles?",
+		"What is the second one in the list?",
+		"What is the third?",
 	}
 
 	expectedOutputs := []string{
