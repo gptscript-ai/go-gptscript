@@ -414,7 +414,7 @@ func TestRestartFailedRun(t *testing.T) {
 			Instructions: instructions,
 		},
 	}
-	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, GlobalOptions: GlobalOptions{Env: []string{"EXIT_CODE=1"}}}, tools...)
+	run, err := g.Evaluate(context.Background(), Options{GlobalOptions: GlobalOptions{Env: []string{"EXIT_CODE=1"}}, DisableCache: true}, tools...)
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
