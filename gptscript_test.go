@@ -828,7 +828,7 @@ func TestToolWithGlobalTools(t *testing.T) {
 
 	var eventContent string
 
-	run, err := g.Run(context.Background(), wd+"/test/global-tools.gpt", Options{DisableCache: true, IncludeEvents: true})
+	run, err := g.Run(context.Background(), wd+"/test/global-tools.gpt", Options{DisableCache: true, IncludeEvents: true, CredentialOverrides: []string{"github.com/gptscript-ai/gateway:OPENAI_API_KEY"}})
 	if err != nil {
 		t.Fatalf("Error executing tool: %v", err)
 	}
