@@ -33,6 +33,20 @@ type ToolDef struct {
 	MetaData        map[string]string `json:"metadata,omitempty"`
 }
 
+func ToolDefsToNodes(tools []ToolDef) []Node {
+	nodes := make([]Node, 0, len(tools))
+	for _, tool := range tools {
+		nodes = append(nodes, Node{
+			ToolNode: &ToolNode{
+				Tool: Tool{
+					ToolDef: tool,
+				},
+			},
+		})
+	}
+	return nodes
+}
+
 func ObjectSchema(kv ...string) *openapi3.Schema {
 	s := &openapi3.Schema{
 		Type:       &openapi3.Types{"object"},
