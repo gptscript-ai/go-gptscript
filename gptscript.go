@@ -328,12 +328,12 @@ func (g *GPTScript) ListCredentials(ctx context.Context, credCtx string, allCont
 }
 
 func (g *GPTScript) CreateCredential(ctx context.Context, cred Credential) error {
-	credJson, err := json.Marshal(cred)
+	credJSON, err := json.Marshal(cred)
 	if err != nil {
 		return fmt.Errorf("failed to marshal credential: %w", err)
 	}
 
-	_, err = g.runBasicCommand(ctx, "credentials/create", CredentialRequest{Content: string(credJson)})
+	_, err = g.runBasicCommand(ctx, "credentials/create", CredentialRequest{Content: string(credJSON)})
 	return err
 }
 
