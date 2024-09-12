@@ -3,13 +3,16 @@ package gptscript
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/stretchr/testify/assert"
 )
 
 var g *GPTScript
@@ -1447,4 +1450,38 @@ func TestLoadTools(t *testing.T) {
 	if prg.Name != "" {
 		t.Errorf("Unexpected name: %s", prg.Name)
 	}
+}
+
+func TestCredentials(t *testing.T) {
+	// We will test in the following order of create, list, reveal, delete.
+	name := "test-" + strconv.Itoa(rand.Int())
+	if len(name) > 20 {
+		name = name[:20]
+	}
+
+	// Create
+	err := g.CreateCredential(context.Background(), Credential{
+		Context:      "testing",
+		ToolName:     name,
+		Type:         CredentialTypeTool,
+		Env:          map[string]string{"ENV": "testing"},
+		RefreshToken: "my-refresh-token",
+	})
+	assert.NoError(t, err)
+
+	// List
+	creds, err := g.ListCredentials(context.Background(), "testing", false)
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, len(creds), 1)
+
+	// Reveal
+	cred, err := g.RevealCredential(context.Background(), "testing", name)
+	assert.NoError(t, err)
+	assert.Contains(t, cred.Env, "ENV")
+	assert.Equal(t, cred.Env["ENV"], "testing")
+	assert.Equal(t, cred.RefreshToken, "my-refresh-token")
+
+	// Delete
+	err = g.DeleteCredential(context.Background(), "testing", name)
+	assert.NoError(t, err)
 }

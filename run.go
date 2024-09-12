@@ -325,6 +325,15 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 
 						done, _ = out["done"].(bool)
 						r.rawOutput = out
+					case []any:
+						b, err := json.Marshal(out)
+						if err != nil {
+							r.state = Error
+							r.err = fmt.Errorf("failed to process stdout: %w", err)
+							return
+						}
+
+						r.output = string(b)
 					default:
 						r.state = Error
 						r.err = fmt.Errorf("failed to process stdout, invalid type: %T", out)
