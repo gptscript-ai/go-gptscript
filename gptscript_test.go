@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var g *GPTScript
@@ -1467,21 +1467,21 @@ func TestCredentials(t *testing.T) {
 		Env:          map[string]string{"ENV": "testing"},
 		RefreshToken: "my-refresh-token",
 	})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// List
-	creds, err := g.ListCredentials(context.Background(), "testing", false)
-	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, len(creds), 1)
+	creds, err := g.ListCredentials(context.Background(), []string{"testing"}, false)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(creds), 1)
 
 	// Reveal
-	cred, err := g.RevealCredential(context.Background(), "testing", name)
-	assert.NoError(t, err)
-	assert.Contains(t, cred.Env, "ENV")
-	assert.Equal(t, cred.Env["ENV"], "testing")
-	assert.Equal(t, cred.RefreshToken, "my-refresh-token")
+	cred, err := g.RevealCredential(context.Background(), []string{"testing"}, name)
+	require.NoError(t, err)
+	require.Contains(t, cred.Env, "ENV")
+	require.Equal(t, cred.Env["ENV"], "testing")
+	require.Equal(t, cred.RefreshToken, "my-refresh-token")
 
 	// Delete
 	err = g.DeleteCredential(context.Background(), "testing", name)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }

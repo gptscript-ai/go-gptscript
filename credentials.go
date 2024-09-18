@@ -20,8 +20,8 @@ type Credential struct {
 }
 
 type CredentialRequest struct {
-	Content     string `json:"content"`
-	AllContexts bool   `json:"allContexts"`
-	Context     string `json:"context"`
-	Name        string `json:"name"`
+	Content     string   `json:"content"`
+	AllContexts bool     `json:"allContexts"`
+	Context     []string `json:"context"`
+	Name        string   `json:"name"`
 }

@@ -307,12 +307,12 @@ func (g *GPTScript) PromptResponse(ctx context.Context, resp PromptResponse) err
 	return err
 }
 
-func (g *GPTScript) ListCredentials(ctx context.Context, credCtx string, allContexts bool) ([]Credential, error) {
+func (g *GPTScript) ListCredentials(ctx context.Context, credCtxs []string, allContexts bool) ([]Credential, error) {
 	req := CredentialRequest{}
 	if allContexts {
 		req.AllContexts = true
 	} else {
-		req.Context = credCtx
+		req.Context = credCtxs
 	}
 
 	out, err := g.runBasicCommand(ctx, "credentials", req)
@@ -337,9 +337,9 @@ func (g *GPTScript) CreateCredential(ctx context.Context, cred Credential) error
 	return err
 }
 
-func (g *GPTScript) RevealCredential(ctx context.Context, credCtx, name string) (Credential, error) {
+func (g *GPTScript) RevealCredential(ctx context.Context, credCtxs []string, name string) (Credential, error) {
 	out, err := g.runBasicCommand(ctx, "credentials/reveal", CredentialRequest{
-		Context: credCtx,
+		Context: credCtxs,
 		Name:    name,
 	})
 	if err != nil {
@@ -355,7 +355,7 @@ func (g *GPTScript) RevealCredential(ctx context.Context, credCtx, name string) 
 
 func (g *GPTScript) DeleteCredential(ctx context.Context, credCtx, name string) error {
 	_, err := g.runBasicCommand(ctx, "credentials/delete", CredentialRequest{
-		Context: credCtx,
+		Context: []string{credCtx}, // Only one context can be specified for delete operations
 		Name:    name,
 	})
 	return err
