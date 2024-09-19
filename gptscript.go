@@ -317,7 +317,7 @@ func (g *GPTScript) ListCredentials(ctx context.Context, opts ListCredentialsOpt
 	req := CredentialRequest{}
 	if opts.allContexts {
 		req.AllContexts = true
-	} else if opts.credCtxs != nil && len(opts.credCtxs) > 0 {
+	} else if len(opts.credCtxs) > 0 {
 		req.Context = opts.credCtxs
 	} else {
 		req.Context = []string{"default"}
