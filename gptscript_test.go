@@ -1482,6 +1482,7 @@ func TestCredentials(t *testing.T) {
 	require.Equal(t, cred.RefreshToken, "my-refresh-token")
 
 	// Delete
-	err = g.DeleteCredential(context.Background(), "testing", name)
+	found, err := g.DeleteCredential(context.Background(), "testing", name)
 	require.NoError(t, err)
+	require.True(t, found)
 }

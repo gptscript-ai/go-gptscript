@@ -161,7 +161,7 @@ func (g *GPTScript) Parse(ctx context.Context, fileName string, opts ...ParseOpt
 		disableCache = disableCache || opt.DisableCache
 	}
 
-	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"file": fileName, "disableCache": disableCache})
+	out, _, err := g.runBasicCommand(ctx, "parse", map[string]any{"file": fileName, "disableCache": disableCache})
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func (g *GPTScript) Parse(ctx context.Context, fileName string, opts ...ParseOpt
 
 // ParseContent will parse the given string into a tool.
 func (g *GPTScript) ParseContent(ctx context.Context, toolDef string) ([]Node, error) {
-	out, err := g.runBasicCommand(ctx, "parse", map[string]any{"content": toolDef})
+	out, _, err := g.runBasicCommand(ctx, "parse", map[string]any{"content": toolDef})
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (g *GPTScript) Fmt(ctx context.Context, nodes []Node) (string, error) {
 		node.TextNode.combine()
 	}
 
-	out, err := g.runBasicCommand(ctx, "fmt", Document{Nodes: nodes})
+	out, _, err := g.runBasicCommand(ctx, "fmt", Document{Nodes: nodes})
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +241,7 @@ func (g *GPTScript) load(ctx context.Context, payload map[string]any, opts ...Lo
 		}
 	}
 
-	out, err := g.runBasicCommand(ctx, "load", payload)
+	out, _, err := g.runBasicCommand(ctx, "load", payload)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func (g *GPTScript) load(ctx context.Context, payload map[string]any, opts ...Lo
 
 // Version will return the output of `gptscript --version`
 func (g *GPTScript) Version(ctx context.Context) (string, error) {
-	out, err := g.runBasicCommand(ctx, "version", nil)
+	out, _, err := g.runBasicCommand(ctx, "version", nil)
 	if err != nil {
 		return "", err
 	}
@@ -285,7 +285,7 @@ func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) (
 		o.Providers = append(o.Providers, g.globalOpts.DefaultModelProvider)
 	}
 
-	out, err := g.runBasicCommand(ctx, "list-models", map[string]any{
+	out, _, err := g.runBasicCommand(ctx, "list-models", map[string]any{
 		"providers":           o.Providers,
 		"env":                 g.globalOpts.Env,
 		"credentialOverrides": o.CredentialOverrides,
@@ -298,12 +298,12 @@ func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) (
 }
 
 func (g *GPTScript) Confirm(ctx context.Context, resp AuthResponse) error {
-	_, err := g.runBasicCommand(ctx, "confirm/"+resp.ID, resp)
+	_, _, err := g.runBasicCommand(ctx, "confirm/"+resp.ID, resp)
 	return err
 }
 
 func (g *GPTScript) PromptResponse(ctx context.Context, resp PromptResponse) error {
-	_, err := g.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Responses)
+	_, _, err := g.runBasicCommand(ctx, "prompt-response/"+resp.ID, resp.Responses)
 	return err
 }
 
@@ -315,7 +315,7 @@ func (g *GPTScript) ListCredentials(ctx context.Context, credCtxs []string, allC
 		req.Context = credCtxs
 	}
 
-	out, err := g.runBasicCommand(ctx, "credentials", req)
+	out, _, err := g.runBasicCommand(ctx, "credentials", req)
 	if err != nil {
 		return nil, err
 	}
@@ -333,12 +333,12 @@ func (g *GPTScript) CreateCredential(ctx context.Context, cred Credential) error
 		return fmt.Errorf("failed to marshal credential: %w", err)
 	}
 
-	_, err = g.runBasicCommand(ctx, "credentials/create", CredentialRequest{Content: string(credJSON)})
+	_, _, err = g.runBasicCommand(ctx, "credentials/create", CredentialRequest{Content: string(credJSON)})
 	return err
 }
 
 func (g *GPTScript) RevealCredential(ctx context.Context, credCtxs []string, name string) (Credential, error) {
-	out, err := g.runBasicCommand(ctx, "credentials/reveal", CredentialRequest{
+	out, _, err := g.runBasicCommand(ctx, "credentials/reveal", CredentialRequest{
 		Context: credCtxs,
 		Name:    name,
 	})
@@ -353,15 +353,25 @@ func (g *GPTScript) RevealCredential(ctx context.Context, credCtxs []string, nam
 	return cred, nil
 }
 
-func (g *GPTScript) DeleteCredential(ctx context.Context, credCtx, name string) error {
-	_, err := g.runBasicCommand(ctx, "credentials/delete", CredentialRequest{
+// DeleteCredential will delete the credential with the given name in the given context.
+// A return value of false, nil indicates that the credential was not found.
+// false, non-nil error indicates a different error when trying to delete.
+// true, nil indicates a successful deletion.
+func (g *GPTScript) DeleteCredential(ctx context.Context, credCtx, name string) (bool, error) {
+	_, code, err := g.runBasicCommand(ctx, "credentials/delete", CredentialRequest{
 		Context: []string{credCtx}, // Only one context can be specified for delete operations
 		Name:    name,
 	})
-	return err
+	if err != nil {
+		if code == 404 {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
-func (g *GPTScript) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
+func (g *GPTScript) runBasicCommand(ctx context.Context, requestPath string, body any) (string, int, error) {
 	run := &Run{
 		url:          g.url,
 		requestPath:  requestPath,
@@ -370,18 +380,18 @@ func (g *GPTScript) runBasicCommand(ctx context.Context, requestPath string, bod
 	}
 
 	if err := run.request(ctx, body); err != nil {
-		return "", err
+		return "", run.responseCode, err
 	}
 
 	out, err := run.Text()
 	if err != nil {
-		return "", err
+		return "", run.responseCode, err
 	}
 	if run.err != nil {
-		return run.ErrorOutput(), run.err
+		return run.ErrorOutput(), run.responseCode, run.err
 	}
 
-	return out, nil
+	return out, run.responseCode, nil
 }
 
 func getCommand() string {

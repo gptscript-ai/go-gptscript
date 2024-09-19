@@ -36,6 +36,7 @@ type Run struct {
 	output, errput    string
 	events            chan Frame
 	lock              sync.Mutex
+	responseCode      int
 }
 
 // Text returns the text output of the gptscript. It blocks until the output is ready.
@@ -235,6 +236,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		return r.err
 	}
 
+	r.responseCode = resp.StatusCode
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		r.state = Error
 		r.err = fmt.Errorf("run encountered an error")
