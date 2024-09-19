@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -363,7 +364,7 @@ func (g *GPTScript) DeleteCredential(ctx context.Context, credCtx, name string) 
 		Name:    name,
 	})
 	if err != nil {
-		if code == 404 {
+		if code == http.StatusNotFound {
 			return false, nil
 		}
 		return false, err
