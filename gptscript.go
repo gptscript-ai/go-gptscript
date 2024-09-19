@@ -308,12 +308,19 @@ func (g *GPTScript) PromptResponse(ctx context.Context, resp PromptResponse) err
 	return err
 }
 
-func (g *GPTScript) ListCredentials(ctx context.Context, credCtxs []string, allContexts bool) ([]Credential, error) {
+type ListCredentialsOptions struct {
+	credCtxs    []string
+	allContexts bool
+}
+
+func (g *GPTScript) ListCredentials(ctx context.Context, opts ListCredentialsOptions) ([]Credential, error) {
 	req := CredentialRequest{}
-	if allContexts {
+	if opts.allContexts {
 		req.AllContexts = true
+	} else if opts.credCtxs != nil && len(opts.credCtxs) > 0 {
+		req.Context = opts.credCtxs
 	} else {
-		req.Context = credCtxs
+		req.Context = []string{"default"}
 	}
 
 	out, _, err := g.runBasicCommand(ctx, "credentials", req)
