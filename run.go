@@ -18,15 +18,15 @@ import (
 var errAbortRun = errors.New("run aborted")
 
 type Run struct {
-	url, requestPath, toolPath string
-	tools                      []ToolDef
-	opts                       Options
-	state                      RunState
-	chatState                  string
-	cancel                     context.CancelCauseFunc
-	err                        error
-	wait                       func()
-	basicCommand               bool
+	url, token, requestPath, toolPath string
+	tools                             []ToolDef
+	opts                              Options
+	state                             RunState
+	chatState                         string
+	cancel                            context.CancelCauseFunc
+	err                               error
+	wait                              func()
+	basicCommand                      bool
 
 	program           *Program
 	callsLock         sync.RWMutex
@@ -175,18 +175,24 @@ func (r *Run) NextChat(ctx context.Context, input string) (*Run, error) {
 		run.opts.ChatState = r.chatState
 	}
 
-	var payload any
+	var (
+		payload any
+		options = run.opts
+	)
+	// Remove the url and token because they shouldn't be sent with the payload.
+	options.URL = ""
+	options.Token = ""
 	if len(r.tools) != 0 {
 		payload = requestPayload{
 			ToolDefs: r.tools,
 			Input:    input,
-			Options:  run.opts,
+			Options:  options,
 		}
 	} else if run.toolPath != "" {
 		payload = requestPayload{
 			File:    run.toolPath,
 			Input:   input,
-			Options: run.opts,
+			Options: options,
 		}
 	}
 
@@ -226,6 +232,10 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		r.state = Error
 		r.err = fmt.Errorf("failed to create request: %w", err)
 		return r.err
+	}
+
+	if r.opts.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+r.opts.Token)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
