@@ -2,14 +2,18 @@ package gptscript
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/stretchr/testify/require"
 )
 
 var g *GPTScript
@@ -1447,4 +1451,45 @@ func TestLoadTools(t *testing.T) {
 	if prg.Name != "" {
 		t.Errorf("Unexpected name: %s", prg.Name)
 	}
+}
+
+func TestCredentials(t *testing.T) {
+	// We will test in the following order of create, list, reveal, delete.
+	name := "test-" + strconv.Itoa(rand.Int())
+	if len(name) > 20 {
+		name = name[:20]
+	}
+
+	// Create
+	err := g.CreateCredential(context.Background(), Credential{
+		Context:      "testing",
+		ToolName:     name,
+		Type:         CredentialTypeTool,
+		Env:          map[string]string{"ENV": "testing"},
+		RefreshToken: "my-refresh-token",
+	})
+	require.NoError(t, err)
+
+	// List
+	creds, err := g.ListCredentials(context.Background(), ListCredentialsOptions{
+		CredentialContexts: []string{"testing"},
+	})
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(creds), 1)
+
+	// Reveal
+	cred, err := g.RevealCredential(context.Background(), []string{"testing"}, name)
+	require.NoError(t, err)
+	require.Contains(t, cred.Env, "ENV")
+	require.Equal(t, cred.Env["ENV"], "testing")
+	require.Equal(t, cred.RefreshToken, "my-refresh-token")
+
+	// Delete
+	err = g.DeleteCredential(context.Background(), "testing", name)
+	require.NoError(t, err)
+
+	// Delete again and make sure we get a NotFoundError
+	err = g.DeleteCredential(context.Background(), "testing", name)
+	require.Error(t, err)
+	require.True(t, errors.As(err, &ErrNotFound{}))
 }

@@ -17,6 +17,14 @@ import (
 
 var errAbortRun = errors.New("run aborted")
 
+type ErrNotFound struct {
+	Message string
+}
+
+func (e ErrNotFound) Error() string {
+	return e.Message
+}
+
 type Run struct {
 	url, token, requestPath, toolPath string
 	tools                             []ToolDef
@@ -36,6 +44,7 @@ type Run struct {
 	output, errput    string
 	events            chan Frame
 	lock              sync.Mutex
+	responseCode      int
 }
 
 // Text returns the text output of the gptscript. It blocks until the output is ready.
@@ -60,6 +69,11 @@ func (r *Run) State() RunState {
 // Err returns the error that caused the gptscript to fail, if any.
 func (r *Run) Err() error {
 	if r.err != nil {
+		if r.responseCode == http.StatusNotFound {
+			return ErrNotFound{
+				Message: fmt.Sprintf("run encountered an error: %s", r.errput),
+			}
+		}
 		return fmt.Errorf("run encountered an error: %w with error output: %s", r.err, r.errput)
 	}
 	return nil
@@ -245,6 +259,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		return r.err
 	}
 
+	r.responseCode = resp.StatusCode
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		r.state = Error
 		r.err = fmt.Errorf("run encountered an error")
@@ -335,6 +350,15 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 
 						done, _ = out["done"].(bool)
 						r.rawOutput = out
+					case []any:
+						b, err := json.Marshal(out)
+						if err != nil {
+							r.state = Error
+							r.err = fmt.Errorf("failed to process stdout: %w", err)
+							return
+						}
+
+						r.output = string(b)
 					default:
 						r.state = Error
 						r.err = fmt.Errorf("failed to process stdout, invalid type: %T", out)

@@ -336,6 +336,67 @@ func (g *GPTScript) PromptResponse(ctx context.Context, resp PromptResponse) err
 	return err
 }
 
+type ListCredentialsOptions struct {
+	CredentialContexts []string
+	AllContexts        bool
+}
+
+func (g *GPTScript) ListCredentials(ctx context.Context, opts ListCredentialsOptions) ([]Credential, error) {
+	req := CredentialRequest{}
+	if opts.AllContexts {
+		req.AllContexts = true
+	} else if len(opts.CredentialContexts) > 0 {
+		req.Context = opts.CredentialContexts
+	} else {
+		req.Context = []string{"default"}
+	}
+
+	out, err := g.runBasicCommand(ctx, "credentials", req)
+	if err != nil {
+		return nil, err
+	}
+
+	var creds []Credential
+	if err = json.Unmarshal([]byte(out), &creds); err != nil {
+		return nil, err
+	}
+	return creds, nil
+}
+
+func (g *GPTScript) CreateCredential(ctx context.Context, cred Credential) error {
+	credJSON, err := json.Marshal(cred)
+	if err != nil {
+		return fmt.Errorf("failed to marshal credential: %w", err)
+	}
+
+	_, err = g.runBasicCommand(ctx, "credentials/create", CredentialRequest{Content: string(credJSON)})
+	return err
+}
+
+func (g *GPTScript) RevealCredential(ctx context.Context, credCtxs []string, name string) (Credential, error) {
+	out, err := g.runBasicCommand(ctx, "credentials/reveal", CredentialRequest{
+		Context: credCtxs,
+		Name:    name,
+	})
+	if err != nil {
+		return Credential{}, err
+	}
+
+	var cred Credential
+	if err = json.Unmarshal([]byte(out), &cred); err != nil {
+		return Credential{}, err
+	}
+	return cred, nil
+}
+
+func (g *GPTScript) DeleteCredential(ctx context.Context, credCtx, name string) error {
+	_, err := g.runBasicCommand(ctx, "credentials/delete", CredentialRequest{
+		Context: []string{credCtx}, // Only one context can be specified for delete operations
+		Name:    name,
+	})
+	return err
+}
+
 func (g *GPTScript) runBasicCommand(ctx context.Context, requestPath string, body any) (string, error) {
 	run := &Run{
 		url:          g.globalOpts.URL,
