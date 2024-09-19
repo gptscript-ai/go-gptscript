@@ -1470,7 +1470,9 @@ func TestCredentials(t *testing.T) {
 	require.NoError(t, err)
 
 	// List
-	creds, err := g.ListCredentials(context.Background(), []string{"testing"}, false)
+	creds, err := g.ListCredentials(context.Background(), ListCredentialsOptions{
+		credCtxs: []string{"testing"},
+	})
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, len(creds), 1)
 
