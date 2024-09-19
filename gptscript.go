@@ -308,16 +308,16 @@ func (g *GPTScript) PromptResponse(ctx context.Context, resp PromptResponse) err
 }
 
 type ListCredentialsOptions struct {
-	credCtxs    []string
-	allContexts bool
+	CredentialContexts []string
+	AllContexts        bool
 }
 
 func (g *GPTScript) ListCredentials(ctx context.Context, opts ListCredentialsOptions) ([]Credential, error) {
 	req := CredentialRequest{}
-	if opts.allContexts {
+	if opts.AllContexts {
 		req.AllContexts = true
-	} else if len(opts.credCtxs) > 0 {
-		req.Context = opts.credCtxs
+	} else if len(opts.CredentialContexts) > 0 {
+		req.Context = opts.CredentialContexts
 	} else {
 		req.Context = []string{"default"}
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"os"
 	"runtime"
 	"testing"
 
@@ -50,14 +51,17 @@ func TestRestartingErrorRun(t *testing.T) {
 func TestStackedContexts(t *testing.T) {
 	const name = "testcred"
 
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+
 	bytes := make([]byte, 32)
-	_, err := rand.Read(bytes)
+	_, err = rand.Read(bytes)
 	require.NoError(t, err)
 
 	context1 := hex.EncodeToString(bytes)[:16]
 	context2 := hex.EncodeToString(bytes)[16:]
 
-	run, err := g.Run(context.Background(), "test/credential.gpt", Options{
+	run, err := g.Run(context.Background(), wd+"/test/credential.gpt", Options{
 		CredentialContexts: []string{context1, context2},
 	})
 	require.NoError(t, err)
@@ -71,7 +75,7 @@ func TestStackedContexts(t *testing.T) {
 	require.Equal(t, cred.Context, context1)
 
 	// Now change the context order and run the script again.
-	run, err = g.Run(context.Background(), "test/credential.gpt", Options{
+	run, err = g.Run(context.Background(), wd+"/test/credential.gpt", Options{
 		CredentialContexts: []string{context2, context1},
 	})
 	require.NoError(t, err)
