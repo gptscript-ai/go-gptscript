@@ -66,7 +66,7 @@ type Options struct {
 	IncludeEvents       bool     `json:"includeEvents"`
 	Prompt              bool     `json:"prompt"`
 	CredentialOverrides []string `json:"credentialOverrides"`
-	CredentialContext   []string `json:"credentialContext"`
+	CredentialContexts  []string `json:"credentialContext"` // json tag is left singular to match SDKServer
 	Location            string   `json:"location"`
 	ForceSequential     bool     `json:"forceSequential"`
 }
