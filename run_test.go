@@ -3,6 +3,7 @@ package gptscript
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"runtime"
 	"testing"
 
@@ -53,8 +54,8 @@ func TestStackedContexts(t *testing.T) {
 	_, err := rand.Read(bytes)
 	require.NoError(t, err)
 
-	context1 := string(bytes)[:16]
-	context2 := string(bytes)[16:]
+	context1 := hex.EncodeToString(bytes)[:16]
+	context2 := hex.EncodeToString(bytes)[16:]
 
 	run, err := g.Run(context.Background(), "test/credential.gpt", Options{
 		CredentialContexts: []string{context1, context2},
