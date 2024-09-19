@@ -66,6 +66,7 @@ type Options struct {
 	IncludeEvents       bool     `json:"includeEvents"`
 	Prompt              bool     `json:"prompt"`
 	CredentialOverrides []string `json:"credentialOverrides"`
+	CredentialContext   []string `json:"credentialContext"`
 	Location            string   `json:"location"`
 	ForceSequential     bool     `json:"forceSequential"`
 }
