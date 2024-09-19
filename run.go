@@ -17,6 +17,14 @@ import (
 
 var errAbortRun = errors.New("run aborted")
 
+type ErrNotFound struct {
+	Message string
+}
+
+func (e ErrNotFound) Error() string {
+	return e.Message
+}
+
 type Run struct {
 	url, requestPath, toolPath string
 	tools                      []ToolDef
@@ -61,6 +69,11 @@ func (r *Run) State() RunState {
 // Err returns the error that caused the gptscript to fail, if any.
 func (r *Run) Err() error {
 	if r.err != nil {
+		if r.responseCode == http.StatusNotFound {
+			return ErrNotFound{
+				Message: fmt.Sprintf("run encountered an error: %s", r.errput),
+			}
+		}
 		return fmt.Errorf("run encountered an error: %w with error output: %s", r.err, r.errput)
 	}
 	return nil

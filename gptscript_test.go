@@ -2,6 +2,7 @@ package gptscript
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
@@ -1484,7 +1485,11 @@ func TestCredentials(t *testing.T) {
 	require.Equal(t, cred.RefreshToken, "my-refresh-token")
 
 	// Delete
-	found, err := g.DeleteCredential(context.Background(), "testing", name)
+	err = g.DeleteCredential(context.Background(), "testing", name)
 	require.NoError(t, err)
-	require.True(t, found)
+
+	// Delete again and make sure we get a NotFoundError
+	err = g.DeleteCredential(context.Background(), "testing", name)
+	require.Error(t, err)
+	require.True(t, errors.As(err, &ErrNotFound{}))
 }
