@@ -81,8 +81,8 @@ func (r *Run) Err() error {
 
 // Program returns the gptscript program for the run.
 func (r *Run) Program() *Program {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.callsLock.Lock()
+	defer r.callsLock.Unlock()
 	return r.program
 }
 
