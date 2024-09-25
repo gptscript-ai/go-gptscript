@@ -52,14 +52,16 @@ type RunFrame struct {
 type CallFrame struct {
 	CallContext `json:",inline"`
 
-	Type        EventType `json:"type"`
-	Start       time.Time `json:"start"`
-	End         time.Time `json:"end"`
-	Input       string    `json:"input"`
-	Output      []Output  `json:"output"`
-	Usage       Usage     `json:"usage"`
-	LLMRequest  any       `json:"llmRequest"`
-	LLMResponse any       `json:"llmResponse"`
+	Type               EventType `json:"type"`
+	Start              time.Time `json:"start"`
+	End                time.Time `json:"end"`
+	Input              string    `json:"input"`
+	Output             []Output  `json:"output"`
+	Usage              Usage     `json:"usage"`
+	ChatResponseCached bool      `json:"chatResponseCached"`
+	ToolResults        int       `json:"toolResults"`
+	LLMRequest         any       `json:"llmRequest"`
+	LLMResponse        any       `json:"llmResponse"`
 }
 
 type Usage struct {
