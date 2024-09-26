@@ -51,7 +51,7 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 
 	opt.Env = append(opt.Env, opt.toEnv()...)
 
-	if serverProcessCancel == nil && os.Getenv("GPTSCRIPT_DISABLE_SERVER") != "true" {
+	if serverProcessCancel == nil && os.Getenv("GPTSCRIPT_URL") == "" {
 		if serverURL != "" {
 			u, err := url.Parse(serverURL)
 			if err != nil {
@@ -66,6 +66,7 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 					opt.URL = "http://" + opt.URL
 				}
 
+				opt.Env = append(opt.Env, "GPTSCRIPT_URL="+opt.URL)
 				return &GPTScript{
 					globalOpts: opt,
 				}, nil
@@ -121,6 +122,9 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 	if !strings.HasPrefix(opt.URL, "http://") && !strings.HasPrefix(opt.URL, "https://") {
 		opt.URL = "http://" + opt.URL
 	}
+
+	opt.Env = append(opt.Env, "GPTSCRIPT_URL="+opt.URL)
+
 	return &GPTScript{
 		globalOpts: opt,
 	}, nil
