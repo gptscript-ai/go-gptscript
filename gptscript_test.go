@@ -161,9 +161,7 @@ func TestAbortRun(t *testing.T) {
 func TestSimpleEvaluate(t *testing.T) {
 	tool := ToolDef{Instructions: "What is the capital of the united states?"}
 
-	run, err := g.Evaluate(context.Background(), Options{
-		GlobalOptions: GlobalOptions{},
-	}, tool)
+	run, err := g.Evaluate(context.Background(), Options{DisableCache: true}, tool)
 	if err != nil {
 		t.Errorf("Error executing tool: %v", err)
 	}
@@ -189,6 +187,17 @@ func TestSimpleEvaluate(t *testing.T) {
 
 	if run.Program() == nil {
 		t.Error("Run program not set")
+	}
+
+	var promptTokens, completionTokens, totalTokens int
+	for _, c := range run.calls {
+		promptTokens += c.Usage.PromptTokens
+		completionTokens += c.Usage.CompletionTokens
+		totalTokens += c.Usage.TotalTokens
+	}
+
+	if promptTokens == 0 || completionTokens == 0 || totalTokens == 0 {
+		t.Errorf("Usage not set: %d, %d, %d", promptTokens, completionTokens, totalTokens)
 	}
 }
 
@@ -285,6 +294,16 @@ func TestEvaluateWithToolList(t *testing.T) {
 	if !strings.Contains(out, "hello there") {
 		t.Errorf("Unexpected output: %s", out)
 	}
+
+	// In this case, we expect the total number of tool results to be 1
+	var toolResults int
+	for _, c := range run.calls {
+		toolResults += c.ToolResults
+	}
+
+	if toolResults != 1 {
+		t.Errorf("Unexpected number of tool results: %d", toolResults)
+	}
 }
 
 func TestEvaluateWithToolListAndSubTool(t *testing.T) {
@@ -358,6 +377,54 @@ func TestStreamEvaluate(t *testing.T) {
 
 	if len(run.ErrorOutput()) != 0 {
 		t.Errorf("Should have no stderr output: %v", run.ErrorOutput())
+	}
+}
+
+func TestSimpleRun(t *testing.T) {
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Error getting working directory: %v", err)
+	}
+
+	run, err := g.Run(context.Background(), wd+"/test/catcher.gpt", Options{})
+	if err != nil {
+		t.Fatalf("Error executing file: %v", err)
+	}
+
+	out, err := run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if !strings.Contains(out, "Salinger") {
+		t.Errorf("Unexpected output: %s", out)
+	}
+
+	if len(run.ErrorOutput()) != 0 {
+		t.Error("Should have no stderr output")
+	}
+
+	// Run it a second time, ensuring the same output and that a cached response is used
+	run, err = g.Run(context.Background(), wd+"/test/catcher.gpt", Options{})
+	if err != nil {
+		t.Fatalf("Error executing file: %v", err)
+	}
+
+	secondOut, err := run.Text()
+	if err != nil {
+		t.Errorf("Error reading output: %v", err)
+	}
+
+	if secondOut != out {
+		t.Errorf("Unexpected output on second run: %s != %s", out, secondOut)
+	}
+
+	// In this case, we expect a single call and that the response is cached
+	for _, c := range run.calls {
+		if !c.ChatResponseCached {
+			t.Error("Chat response should be cached")
+		}
+		break
 	}
 }
 
