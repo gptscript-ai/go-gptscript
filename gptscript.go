@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,49 +33,27 @@ type GPTScript struct {
 
 func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 	opt := completeGlobalOptions(opts...)
-	lock.Lock()
-	defer lock.Unlock()
-	gptscriptCount++
-
-	if serverURL == "" {
-		serverURL = opt.URL
-		if serverURL == "" {
-			serverURL = os.Getenv("GPTSCRIPT_URL")
-		}
-	}
-
 	if opt.Env == nil {
 		opt.Env = os.Environ()
 	}
 
 	opt.Env = append(opt.Env, opt.toEnv()...)
 
-	if serverProcessCancel == nil && os.Getenv("GPTSCRIPT_URL") == "" {
-		if serverURL != "" {
-			u, err := url.Parse(serverURL)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse server URL: %w", err)
-			}
+	lock.Lock()
+	defer lock.Unlock()
+	gptscriptCount++
 
-			// If the server URL has a path, then this implies that the server is already running.
-			// In that case, we don't need to start the server.
-			if u.Path != "" && u.Path != "/" {
-				opt.URL = serverURL
-				if !strings.HasPrefix(opt.URL, "http://") && !strings.HasPrefix(opt.URL, "https://") {
-					opt.URL = "http://" + opt.URL
-				}
+	startSDK := serverProcess == nil && serverURL == "" && opt.URL == ""
+	if serverURL == "" {
+		serverURL = os.Getenv("GPTSCRIPT_URL")
+		startSDK = startSDK && serverURL == ""
+	}
 
-				opt.Env = append(opt.Env, "GPTSCRIPT_URL="+opt.URL)
-				return &GPTScript{
-					globalOpts: opt,
-				}, nil
-			}
-		}
-
+	if startSDK {
 		ctx, cancel := context.WithCancel(context.Background())
 		in, _ := io.Pipe()
 
-		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", strings.TrimPrefix(serverURL, "http://"))
+		serverProcess = exec.CommandContext(ctx, getCommand(), "sys.sdkserver", "--listen-address", "127.0.0.1:0")
 		serverProcess.Env = opt.Env[:]
 
 		serverProcess.Stdin = in
@@ -118,12 +95,22 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 		serverURL = strings.TrimSpace(serverURL)
 	}
 
-	opt.URL = serverURL
+	if opt.URL == "" {
+		opt.URL = serverURL
+	}
+
 	if !strings.HasPrefix(opt.URL, "http://") && !strings.HasPrefix(opt.URL, "https://") {
 		opt.URL = "http://" + opt.URL
 	}
 
 	opt.Env = append(opt.Env, "GPTSCRIPT_URL="+opt.URL)
+
+	if opt.Token == "" {
+		opt.Token = os.Getenv("GPTSCRIPT_TOKEN")
+	}
+	if opt.Token != "" {
+		opt.Env = append(opt.Env, "GPTSCRIPT_TOKEN="+opt.Token)
+	}
 
 	return &GPTScript{
 		globalOpts: opt,
