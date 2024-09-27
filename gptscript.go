@@ -103,8 +103,13 @@ func NewGPTScript(opts ...GlobalOptions) (*GPTScript, error) {
 		opt.URL = "http://" + opt.URL
 	}
 
+	opt.Env = append(opt.Env, "GPTSCRIPT_URL="+opt.URL)
+
 	if opt.Token == "" {
 		opt.Token = os.Getenv("GPTSCRIPT_TOKEN")
+	}
+	if opt.Token != "" {
+		opt.Env = append(opt.Env, "GPTSCRIPT_TOKEN="+opt.Token)
 	}
 
 	return &GPTScript{
