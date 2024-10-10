@@ -18,8 +18,8 @@ type DatasetMeta struct {
 
 type Dataset struct {
 	DatasetMeta `json:",inline"`
-	BaseDir     string                    `json:"baseDir,omitempty"`
-	Elements    map[string]DatasetElement `json:"elements"`
+	BaseDir     string                        `json:"baseDir,omitempty"`
+	Elements    map[string]DatasetElementMeta `json:"elements"`
 }
 
 type datasetRequest struct {
