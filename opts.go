@@ -11,6 +11,7 @@ type GlobalOptions struct {
 	DefaultModelProvider string   `json:"DefaultModelProvider"`
 	CacheDir             string   `json:"CacheDir"`
 	Env                  []string `json:"env"`
+	DatasetToolRepo      string   `json:"DatasetToolRepo"`
 }
 
 func (g GlobalOptions) toEnv() []string {
