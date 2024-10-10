@@ -25,26 +25,26 @@ type Dataset struct {
 type datasetRequest struct {
 	Input           string `json:"input"`
 	Workspace       string `json:"workspace"`
-	DatasetToolRepo string `json:"dataset_tool_repo"`
+	DatasetToolRepo string `json:"datasetToolRepo"`
 }
 
 type createDatasetArgs struct {
-	Name        string `json:"dataset_name"`
-	Description string `json:"dataset_description"`
+	Name        string `json:"datasetName"`
+	Description string `json:"datasetDescription"`
 }
 
 type addDatasetElementArgs struct {
-	DatasetID          string `json:"dataset_id"`
-	ElementName        string `json:"element_name"`
-	ElementDescription string `json:"element_description"`
-	ElementContent     string `json:"element_content"`
+	DatasetID          string `json:"datasetID"`
+	ElementName        string `json:"elementName"`
+	ElementDescription string `json:"elementDescription"`
+	ElementContent     string `json:"elementContent"`
 }
 
 type listDatasetElementArgs struct {
-	DatasetID string `json:"dataset_id"`
+	DatasetID string `json:"datasetID"`
 }
 
 type getDatasetElementArgs struct {
-	DatasetID string `json:"dataset_id"`
+	DatasetID string `json:"datasetID"`
 	Element   string `json:"element"`
 }
