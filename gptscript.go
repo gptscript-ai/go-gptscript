@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -406,7 +407,7 @@ func (g *GPTScript) ListDatasets(ctx context.Context, workspace string) ([]Datas
 	}
 
 	if strings.HasPrefix(out, "ERROR:") {
-		return nil, fmt.Errorf(out)
+		return nil, errors.New(out)
 	}
 
 	var datasets []DatasetMeta
@@ -441,7 +442,7 @@ func (g *GPTScript) CreateDataset(ctx context.Context, workspace, name, descript
 	}
 
 	if strings.HasPrefix(out, "ERROR:") {
-		return Dataset{}, fmt.Errorf(out)
+		return Dataset{}, errors.New(out)
 	}
 
 	var dataset Dataset
@@ -478,7 +479,7 @@ func (g *GPTScript) AddDatasetElement(ctx context.Context, workspace, datasetID,
 	}
 
 	if strings.HasPrefix(out, "ERROR:") {
-		return DatasetElementMeta{}, fmt.Errorf(out)
+		return DatasetElementMeta{}, errors.New(out)
 	}
 
 	var element DatasetElementMeta
@@ -512,7 +513,7 @@ func (g *GPTScript) ListDatasetElements(ctx context.Context, workspace, datasetI
 	}
 
 	if strings.HasPrefix(out, "ERROR:") {
-		return nil, fmt.Errorf(out)
+		return nil, errors.New(out)
 	}
 
 	var elements []DatasetElementMeta
@@ -547,7 +548,7 @@ func (g *GPTScript) GetDatasetElement(ctx context.Context, workspace, datasetID,
 	}
 
 	if strings.HasPrefix(out, "ERROR:") {
-		return DatasetElement{}, fmt.Errorf(out)
+		return DatasetElement{}, errors.New(out)
 	}
 
 	var element DatasetElement
