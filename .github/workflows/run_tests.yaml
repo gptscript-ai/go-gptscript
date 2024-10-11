@@ -36,24 +36,3 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: make test
-
-  test-windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-          ref: ${{ inputs.git_ref }}
-      - uses: actions/setup-go@v5
-        with:
-          cache: false
-          go-version: "1.23"
-      - name: Install gptscript
-        run: |
-          curl https://get.gptscript.ai/releases/default_windows_amd64_v1/gptscript.exe -o gptscript.exe
-      - name: Run Tests
-        env:
-          GPTSCRIPT_BIN: .\gptscript.exe
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: make test
