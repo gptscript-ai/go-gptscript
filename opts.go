@@ -11,6 +11,7 @@ type GlobalOptions struct {
 	DefaultModelProvider string   `json:"DefaultModelProvider"`
 	CacheDir             string   `json:"CacheDir"`
 	Env                  []string `json:"env"`
+	DatasetToolRepo      string   `json:"DatasetToolRepo"`
 }
 
 func (g GlobalOptions) toEnv() []string {
@@ -41,6 +42,7 @@ func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
 		result.OpenAIBaseURL = firstSet(opt.OpenAIBaseURL, result.OpenAIBaseURL)
 		result.DefaultModel = firstSet(opt.DefaultModel, result.DefaultModel)
 		result.DefaultModelProvider = firstSet(opt.DefaultModelProvider, result.DefaultModelProvider)
+		result.DatasetToolRepo = firstSet(opt.DatasetToolRepo, result.DatasetToolRepo)
 		result.Env = append(result.Env, opt.Env...)
 	}
 	return result
