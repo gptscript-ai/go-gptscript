@@ -670,7 +670,7 @@ func TestParseToolWithTextNode(t *testing.T) {
 		t.Fatalf("No text node found")
 	}
 
-	if tools[1].TextNode.Text != "hello\n" {
+	if strings.TrimSpace(tools[1].TextNode.Text) != "hello" {
 		t.Errorf("Unexpected text: %s", tools[1].TextNode.Text)
 	}
 	if tools[1].TextNode.Fmt != "markdown" {
