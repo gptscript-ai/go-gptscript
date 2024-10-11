@@ -1562,7 +1562,7 @@ func TestCredentials(t *testing.T) {
 }
 
 func TestDatasets(t *testing.T) {
-	workspace, err := os.MkdirTemp("/tmp", "go-gptscript-test")
+	workspace, err := os.MkdirTemp("", "go-gptscript-test")
 	require.NoError(t, err)
 	defer func() {
 		_ = os.RemoveAll(workspace)
