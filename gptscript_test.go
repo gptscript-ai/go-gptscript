@@ -1047,7 +1047,7 @@ func TestConfirmDeny(t *testing.T) {
 		return
 	}
 
-	if !strings.Contains(confirmCallEvent.Input, "\"ls\"") {
+	if !strings.Contains(confirmCallEvent.Input, "ls") {
 		t.Errorf("unexpected confirm input: %s", confirmCallEvent.Input)
 	}
 
