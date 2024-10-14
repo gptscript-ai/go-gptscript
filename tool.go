@@ -105,7 +105,6 @@ type ToolNode struct {
 type Tool struct {
 	ToolDef     `json:",inline"`
 	ID          string                     `json:"id,omitempty"`
-	Arguments   *openapi3.Schema           `json:"arguments,omitempty"`
 	ToolMapping map[string][]ToolReference `json:"toolMapping,omitempty"`
 	LocalTools  map[string]string          `json:"localTools,omitempty"`
 	Source      ToolSource                 `json:"source,omitempty"`
