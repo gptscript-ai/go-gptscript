@@ -12,6 +12,7 @@ type GlobalOptions struct {
 	CacheDir             string   `json:"CacheDir"`
 	Env                  []string `json:"env"`
 	DatasetToolRepo      string   `json:"DatasetToolRepo"`
+	WorkspaceTool        string   `json:"WorkspaceTool"`
 }
 
 func (g GlobalOptions) toEnv() []string {
