@@ -8,11 +8,10 @@ import (
 
 func (g *GPTScript) CreateWorkspace(ctx context.Context, providerType string, fromWorkspaces ...string) (string, error) {
 	out, err := g.runBasicCommand(ctx, "workspaces/create", map[string]any{
-		"providerType":      providerType,
-		"fromWorkspaceIDs":  fromWorkspaces,
-		"workspaceTool":     g.globalOpts.WorkspaceTool,
-		"directoryDataHome": g.globalOpts.WorkspaceDirectoryDataHome,
-		"env":               g.globalOpts.Env,
+		"providerType":     providerType,
+		"fromWorkspaceIDs": fromWorkspaces,
+		"workspaceTool":    g.globalOpts.WorkspaceTool,
+		"env":              g.globalOpts.Env,
 	})
 	if err != nil {
 		return "", err
