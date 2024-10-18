@@ -3,17 +3,16 @@ package gptscript
 // GlobalOptions allows specification of settings that are used for every call made.
 // These options can be overridden by the corresponding Options.
 type GlobalOptions struct {
-	URL                        string   `json:"url"`
-	Token                      string   `json:"token"`
-	OpenAIAPIKey               string   `json:"APIKey"`
-	OpenAIBaseURL              string   `json:"BaseURL"`
-	DefaultModel               string   `json:"DefaultModel"`
-	DefaultModelProvider       string   `json:"DefaultModelProvider"`
-	CacheDir                   string   `json:"CacheDir"`
-	Env                        []string `json:"env"`
-	DatasetToolRepo            string   `json:"DatasetToolRepo"`
-	WorkspaceTool              string   `json:"WorkspaceTool"`
-	WorkspaceDirectoryDataHome string   `json:"WorkspaceDirectoryDataHome"`
+	URL                  string   `json:"url"`
+	Token                string   `json:"token"`
+	OpenAIAPIKey         string   `json:"APIKey"`
+	OpenAIBaseURL        string   `json:"BaseURL"`
+	DefaultModel         string   `json:"DefaultModel"`
+	DefaultModelProvider string   `json:"DefaultModelProvider"`
+	CacheDir             string   `json:"CacheDir"`
+	Env                  []string `json:"env"`
+	DatasetToolRepo      string   `json:"DatasetToolRepo"`
+	WorkspaceTool        string   `json:"WorkspaceTool"`
 }
 
 func (g GlobalOptions) toEnv() []string {
@@ -29,9 +28,6 @@ func (g GlobalOptions) toEnv() []string {
 	}
 	if g.DefaultModelProvider != "" {
 		args = append(args, "GPTSCRIPT_SDKSERVER_DEFAULT_MODEL_PROVIDER="+g.DefaultModelProvider)
-	}
-	if g.WorkspaceDirectoryDataHome != "" {
-		args = append(args, "GPTSCRIPT_WORKSPACE_DIR="+g.WorkspaceDirectoryDataHome)
 	}
 
 	return args
@@ -49,7 +45,6 @@ func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
 		result.DefaultModelProvider = firstSet(opt.DefaultModelProvider, result.DefaultModelProvider)
 		result.DatasetToolRepo = firstSet(opt.DatasetToolRepo, result.DatasetToolRepo)
 		result.WorkspaceTool = firstSet(opt.WorkspaceTool, result.WorkspaceTool)
-		result.WorkspaceDirectoryDataHome = firstSet(opt.WorkspaceDirectoryDataHome, result.WorkspaceDirectoryDataHome)
 		result.Env = append(result.Env, opt.Env...)
 	}
 	return result
