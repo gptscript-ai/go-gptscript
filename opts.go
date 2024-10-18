@@ -48,6 +48,8 @@ func completeGlobalOptions(opts ...GlobalOptions) GlobalOptions {
 		result.DefaultModel = firstSet(opt.DefaultModel, result.DefaultModel)
 		result.DefaultModelProvider = firstSet(opt.DefaultModelProvider, result.DefaultModelProvider)
 		result.DatasetToolRepo = firstSet(opt.DatasetToolRepo, result.DatasetToolRepo)
+		result.WorkspaceTool = firstSet(opt.WorkspaceTool, result.WorkspaceTool)
+		result.WorkspaceDirectoryDataHome = firstSet(opt.WorkspaceDirectoryDataHome, result.WorkspaceDirectoryDataHome)
 		result.Env = append(result.Env, opt.Env...)
 	}
 	return result
