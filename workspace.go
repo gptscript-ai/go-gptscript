@@ -2,7 +2,6 @@ package gptscript
 
 import (
 	"context"
-	"encoding/base64"
 	"strings"
 )
 
@@ -52,8 +51,7 @@ func (g *GPTScript) ListFilesInWorkspace(ctx context.Context, workspaceID string
 		return nil, err
 	}
 
-	// The first line of the output is the workspace ID, ignore it.
-	return strings.Split(strings.TrimSpace(out), "\n")[1:], nil
+	return strings.Split(strings.TrimSpace(out), "\n"), nil
 }
 
 func (g *GPTScript) RemoveAllWithPrefix(ctx context.Context, workspaceID, prefix string) error {
@@ -69,12 +67,11 @@ func (g *GPTScript) RemoveAllWithPrefix(ctx context.Context, workspaceID, prefix
 
 func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, workspaceID, filePath string, contents []byte) error {
 	_, err := g.runBasicCommand(ctx, "workspaces/write-file", map[string]any{
-		"id":                 workspaceID,
-		"contents":           base64.StdEncoding.EncodeToString(contents),
-		"filePath":           filePath,
-		"workspaceTool":      g.globalOpts.WorkspaceTool,
-		"base64EncodedInput": true,
-		"env":                g.globalOpts.Env,
+		"id":            workspaceID,
+		"contents":      contents,
+		"filePath":      filePath,
+		"workspaceTool": g.globalOpts.WorkspaceTool,
+		"env":           g.globalOpts.Env,
 	})
 
 	return err
@@ -93,15 +90,14 @@ func (g *GPTScript) DeleteFileInWorkspace(ctx context.Context, workspaceID, file
 
 func (g *GPTScript) ReadFileInWorkspace(ctx context.Context, workspaceID, filePath string) ([]byte, error) {
 	out, err := g.runBasicCommand(ctx, "workspaces/read-file", map[string]any{
-		"id":                 workspaceID,
-		"filePath":           filePath,
-		"workspaceTool":      g.globalOpts.WorkspaceTool,
-		"base64EncodeOutput": true,
-		"env":                g.globalOpts.Env,
+		"id":            workspaceID,
+		"filePath":      filePath,
+		"workspaceTool": g.globalOpts.WorkspaceTool,
+		"env":           g.globalOpts.Env,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return base64.StdEncoding.DecodeString(out)
+	return []byte(out), nil
 }
