@@ -29,6 +29,9 @@ func (g GlobalOptions) toEnv() []string {
 	if g.DefaultModelProvider != "" {
 		args = append(args, "GPTSCRIPT_SDKSERVER_DEFAULT_MODEL_PROVIDER="+g.DefaultModelProvider)
 	}
+	if g.WorkspaceTool != "" {
+		args = append(args, "GPTSCRIPT_SDKSERVER_WORKSPACE_TOOL="+g.WorkspaceTool)
+	}
 
 	return args
 }
