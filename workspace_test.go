@@ -13,7 +13,7 @@ func TestCreateAndDeleteWorkspace(t *testing.T) {
 		t.Fatalf("Error creating workspace: %v", err)
 	}
 
-	err = g.DeleteWorkspace(context.Background(), id)
+	err = g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error deleting workspace: %v", err)
 	}
@@ -26,18 +26,18 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), id)
+		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
 	})
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test.txt", []byte("test"))
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	content, err := g.ReadFileInWorkspace(context.Background(), id, "test.txt")
+	content, err := g.ReadFileInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error reading file: %v", err)
 	}
@@ -46,7 +46,7 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 		t.Errorf("Unexpected content: %s", content)
 	}
 
-	err = g.DeleteFileInWorkspace(context.Background(), id, "test.txt")
+	err = g.DeleteFileInWorkspace(context.Background(), "test.txt", DeleteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error deleting file: %v", err)
 	}
@@ -59,34 +59,34 @@ func TestLsComplexWorkspace(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), id)
+		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
 	})
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test/test1.txt", []byte("hello1"))
+	err = g.WriteFileInWorkspace(context.Background(), "test/test1.txt", []byte("hello1"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test1/test2.txt", []byte("hello2"))
+	err = g.WriteFileInWorkspace(context.Background(), "test1/test2.txt", []byte("hello2"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test1/test3.txt", []byte("hello3"))
+	err = g.WriteFileInWorkspace(context.Background(), "test1/test3.txt", []byte("hello3"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	err = g.WriteFileInWorkspace(context.Background(), id, ".hidden.txt", []byte("hidden"))
+	err = g.WriteFileInWorkspace(context.Background(), ".hidden.txt", []byte("hidden"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating hidden file: %v", err)
 	}
 
 	// List all files
-	content, err := g.ListFilesInWorkspace(context.Background(), id)
+	content, err := g.ListFilesInWorkspace(context.Background(), ListFilesInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error listing files: %v", err)
 	}
@@ -96,7 +96,7 @@ func TestLsComplexWorkspace(t *testing.T) {
 	}
 
 	// List files in subdirectory
-	content, err = g.ListFilesInWorkspace(context.Background(), id, ListFilesInWorkspaceOptions{Prefix: "test1"})
+	content, err = g.ListFilesInWorkspace(context.Background(), ListFilesInWorkspaceOptions{WorkspaceID: id, Prefix: "test1"})
 	if err != nil {
 		t.Fatalf("Error listing files: %v", err)
 	}
@@ -106,13 +106,13 @@ func TestLsComplexWorkspace(t *testing.T) {
 	}
 
 	// Remove all files with test1 prefix
-	err = g.RemoveAllWithPrefix(context.Background(), id, "test1")
+	err = g.RemoveAll(context.Background(), RemoveAllOptions{WorkspaceID: id, WithPrefix: "test1"})
 	if err != nil {
 		t.Fatalf("Error removing files: %v", err)
 	}
 
 	// List files in subdirectory
-	content, err = g.ListFilesInWorkspace(context.Background(), id)
+	content, err = g.ListFilesInWorkspace(context.Background(), ListFilesInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error listing files: %v", err)
 	}
@@ -132,7 +132,7 @@ func TestCreateAndDeleteWorkspaceS3(t *testing.T) {
 		t.Fatalf("Error creating workspace: %v", err)
 	}
 
-	err = g.DeleteWorkspace(context.Background(), id)
+	err = g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error deleting workspace: %v", err)
 	}
@@ -149,18 +149,18 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), id)
+		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
 	})
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test.txt", []byte("test"))
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	content, err := g.ReadFileInWorkspace(context.Background(), id, "test.txt")
+	content, err := g.ReadFileInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error reading file: %v", err)
 	}
@@ -169,7 +169,7 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 		t.Errorf("Unexpected content: %s", content)
 	}
 
-	err = g.DeleteFileInWorkspace(context.Background(), id, "test.txt")
+	err = g.DeleteFileInWorkspace(context.Background(), "test.txt", DeleteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error deleting file: %v", err)
 	}
@@ -186,34 +186,34 @@ func TestLsComplexWorkspaceS3(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), id)
+		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
 	})
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test/test1.txt", []byte("hello1"))
+	err = g.WriteFileInWorkspace(context.Background(), "test/test1.txt", []byte("hello1"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test1/test2.txt", []byte("hello2"))
+	err = g.WriteFileInWorkspace(context.Background(), "test1/test2.txt", []byte("hello2"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	err = g.WriteFileInWorkspace(context.Background(), id, "test1/test3.txt", []byte("hello3"))
+	err = g.WriteFileInWorkspace(context.Background(), "test1/test3.txt", []byte("hello3"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
 
-	err = g.WriteFileInWorkspace(context.Background(), id, ".hidden.txt", []byte("hidden"))
+	err = g.WriteFileInWorkspace(context.Background(), ".hidden.txt", []byte("hidden"), WriteFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error creating hidden file: %v", err)
 	}
 
 	// List all files
-	content, err := g.ListFilesInWorkspace(context.Background(), id)
+	content, err := g.ListFilesInWorkspace(context.Background(), ListFilesInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error listing files: %v", err)
 	}
@@ -223,7 +223,7 @@ func TestLsComplexWorkspaceS3(t *testing.T) {
 	}
 
 	// List files in subdirectory
-	content, err = g.ListFilesInWorkspace(context.Background(), id, ListFilesInWorkspaceOptions{Prefix: "test1"})
+	content, err = g.ListFilesInWorkspace(context.Background(), ListFilesInWorkspaceOptions{WorkspaceID: id, Prefix: "test1"})
 	if err != nil {
 		t.Fatalf("Error listing files: %v", err)
 	}
@@ -233,13 +233,13 @@ func TestLsComplexWorkspaceS3(t *testing.T) {
 	}
 
 	// Remove all files with test1 prefix
-	err = g.RemoveAllWithPrefix(context.Background(), id, "test1")
+	err = g.RemoveAll(context.Background(), RemoveAllOptions{WorkspaceID: id, WithPrefix: "test1"})
 	if err != nil {
 		t.Fatalf("Error removing files: %v", err)
 	}
 
 	// List files in subdirectory
-	content, err = g.ListFilesInWorkspace(context.Background(), id)
+	content, err = g.ListFilesInWorkspace(context.Background(), ListFilesInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Fatalf("Error listing files: %v", err)
 	}
