@@ -2,9 +2,25 @@ package gptscript
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
 	"os"
 	"strings"
 )
+
+type NotFoundInWorkspaceError struct {
+	id   string
+	name string
+}
+
+func (e *NotFoundInWorkspaceError) Error() string {
+	return fmt.Sprintf("not found: %s/%s", e.id, e.name)
+}
+
+func newNotFoundInWorkspaceError(id, name string) *NotFoundInWorkspaceError {
+	return &NotFoundInWorkspaceError{id: id, name: name}
+}
 
 func (g *GPTScript) CreateWorkspace(ctx context.Context, providerType string, fromWorkspaces ...string) (string, error) {
 	out, err := g.runBasicCommand(ctx, "workspaces/create", map[string]any{
@@ -75,7 +91,13 @@ func (g *GPTScript) ListFilesInWorkspace(ctx context.Context, opts ...ListFilesI
 		return nil, err
 	}
 
-	return strings.Split(strings.TrimSpace(out), "\n"), nil
+	out = strings.TrimSpace(out)
+	if len(out) == 0 {
+		return nil, nil
+	}
+
+	var files []string
+	return files, json.Unmarshal([]byte(out), &files)
 }
 
 type RemoveAllOptions struct {
@@ -126,7 +148,7 @@ func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, c
 
 	_, err := g.runBasicCommand(ctx, "workspaces/write-file", map[string]any{
 		"id":            opt.WorkspaceID,
-		"contents":      contents,
+		"contents":      base64.StdEncoding.EncodeToString(contents),
 		"filePath":      filePath,
 		"workspaceTool": g.globalOpts.WorkspaceTool,
 		"env":           g.globalOpts.Env,
@@ -158,6 +180,10 @@ func (g *GPTScript) DeleteFileInWorkspace(ctx context.Context, filePath string, 
 		"env":           g.globalOpts.Env,
 	})
 
+	if err != nil && strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
+		return newNotFoundInWorkspaceError(opt.WorkspaceID, filePath)
+	}
+
 	return err
 }
 
@@ -184,8 +210,11 @@ func (g *GPTScript) ReadFileInWorkspace(ctx context.Context, filePath string, op
 		"env":           g.globalOpts.Env,
 	})
 	if err != nil {
+		if strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
+			return nil, newNotFoundInWorkspaceError(opt.WorkspaceID, filePath)
+		}
 		return nil, err
 	}
 
-	return []byte(out), nil
+	return base64.StdEncoding.DecodeString(out)
 }

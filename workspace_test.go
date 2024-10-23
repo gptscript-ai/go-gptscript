@@ -3,6 +3,7 @@ package gptscript
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"testing"
 )
@@ -44,6 +45,12 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 
 	if !bytes.Equal(content, []byte("test")) {
 		t.Errorf("Unexpected content: %s", content)
+	}
+
+	// Ensure we get the error we expect when trying to read a non-existent file
+	_, err = g.ReadFileInWorkspace(context.Background(), "test1.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
+	if nf := (*NotFoundInWorkspaceError)(nil); !errors.As(err, &nf) {
+		t.Errorf("Unexpected error reading non-existent file: %v", err)
 	}
 
 	err = g.DeleteFileInWorkspace(context.Background(), "test.txt", DeleteFileInWorkspaceOptions{WorkspaceID: id})
@@ -167,6 +174,12 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 
 	if !bytes.Equal(content, []byte("test")) {
 		t.Errorf("Unexpected content: %s", content)
+	}
+
+	// Ensure we get the error we expect when trying to read a non-existent file
+	_, err = g.ReadFileInWorkspace(context.Background(), "test1.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
+	if nf := (*NotFoundInWorkspaceError)(nil); !errors.As(err, &nf) {
+		t.Errorf("Unexpected error reading non-existent file: %v", err)
 	}
 
 	err = g.DeleteFileInWorkspace(context.Background(), "test.txt", DeleteFileInWorkspaceOptions{WorkspaceID: id})
