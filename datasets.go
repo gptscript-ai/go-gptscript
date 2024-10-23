@@ -30,9 +30,10 @@ type Dataset struct {
 }
 
 type datasetRequest struct {
-	Input           string `json:"input"`
-	Workspace       string `json:"workspace"`
-	DatasetToolRepo string `json:"datasetToolRepo"`
+	Input           string   `json:"input"`
+	WorkspaceID     string   `json:"workspaceID"`
+	DatasetToolRepo string   `json:"datasetToolRepo"`
+	Env             []string `json:"env"`
 }
 
 type createDatasetArgs struct {
@@ -45,6 +46,11 @@ type addDatasetElementArgs struct {
 	ElementName        string `json:"elementName"`
 	ElementDescription string `json:"elementDescription"`
 	ElementContent     string `json:"elementContent"`
+}
+
+type addDatasetElementsArgs struct {
+	DatasetID string           `json:"datasetID"`
+	Elements  []DatasetElement `json:"elements"`
 }
 
 type listDatasetElementArgs struct {
@@ -63,8 +69,9 @@ func (g *GPTScript) ListDatasets(ctx context.Context, workspace string) ([]Datas
 
 	out, err := g.runBasicCommand(ctx, "datasets", datasetRequest{
 		Input:           "{}",
-		Workspace:       workspace,
+		WorkspaceID:     workspace,
 		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
+		Env:             g.globalOpts.Env,
 	})
 	if err != nil {
 		return nil, err
@@ -77,9 +84,9 @@ func (g *GPTScript) ListDatasets(ctx context.Context, workspace string) ([]Datas
 	return datasets, nil
 }
 
-func (g *GPTScript) CreateDataset(ctx context.Context, workspace, name, description string) (Dataset, error) {
-	if workspace == "" {
-		workspace = os.Getenv("GPTSCRIPT_WORKSPACE_DIR")
+func (g *GPTScript) CreateDataset(ctx context.Context, workspaceID, name, description string) (Dataset, error) {
+	if workspaceID == "" {
+		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_DIR")
 	}
 
 	args := createDatasetArgs{
@@ -93,8 +100,9 @@ func (g *GPTScript) CreateDataset(ctx context.Context, workspace, name, descript
 
 	out, err := g.runBasicCommand(ctx, "datasets/create", datasetRequest{
 		Input:           string(argsJSON),
-		Workspace:       workspace,
+		WorkspaceID:     workspaceID,
 		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
+		Env:             g.globalOpts.Env,
 	})
 	if err != nil {
 		return Dataset{}, err
@@ -107,9 +115,9 @@ func (g *GPTScript) CreateDataset(ctx context.Context, workspace, name, descript
 	return dataset, nil
 }
 
-func (g *GPTScript) AddDatasetElement(ctx context.Context, workspace, datasetID, elementName, elementDescription, elementContent string) (DatasetElementMeta, error) {
-	if workspace == "" {
-		workspace = os.Getenv("GPTSCRIPT_WORKSPACE_DIR")
+func (g *GPTScript) AddDatasetElement(ctx context.Context, workspaceID, datasetID, elementName, elementDescription, elementContent string) (DatasetElementMeta, error) {
+	if workspaceID == "" {
+		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_DIR")
 	}
 
 	args := addDatasetElementArgs{
@@ -125,8 +133,9 @@ func (g *GPTScript) AddDatasetElement(ctx context.Context, workspace, datasetID,
 
 	out, err := g.runBasicCommand(ctx, "datasets/add-element", datasetRequest{
 		Input:           string(argsJSON),
-		Workspace:       workspace,
+		WorkspaceID:     workspaceID,
 		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
+		Env:             g.globalOpts.Env,
 	})
 	if err != nil {
 		return DatasetElementMeta{}, err
@@ -139,11 +148,26 @@ func (g *GPTScript) AddDatasetElement(ctx context.Context, workspace, datasetID,
 	return element, nil
 }
 
-func (g *GPTScript) ListDatasetElements(ctx context.Context, workspace, datasetID string) ([]DatasetElementMeta, error) {
-	if workspace == "" {
-		workspace = os.Getenv("GPTSCRIPT_WORKSPACE_DIR")
+func (g *GPTScript) AddDatasetElements(ctx context.Context, workspaceID, datasetID string, elements []DatasetElement) error {
+	args := addDatasetElementsArgs{
+		DatasetID: datasetID,
+		Elements:  elements,
+	}
+	argsJSON, err := json.Marshal(args)
+	if err != nil {
+		return fmt.Errorf("failed to marshal element args: %w", err)
 	}
 
+	_, err = g.runBasicCommand(ctx, "datasets/add-elements", datasetRequest{
+		Input:           string(argsJSON),
+		WorkspaceID:     workspaceID,
+		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
+		Env:             g.globalOpts.Env,
+	})
+	return err
+}
+
+func (g *GPTScript) ListDatasetElements(ctx context.Context, workspaceID, datasetID string) ([]DatasetElementMeta, error) {
 	args := listDatasetElementArgs{
 		DatasetID: datasetID,
 	}
@@ -154,8 +178,9 @@ func (g *GPTScript) ListDatasetElements(ctx context.Context, workspace, datasetI
 
 	out, err := g.runBasicCommand(ctx, "datasets/list-elements", datasetRequest{
 		Input:           string(argsJSON),
-		Workspace:       workspace,
+		WorkspaceID:     workspaceID,
 		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
+		Env:             g.globalOpts.Env,
 	})
 	if err != nil {
 		return nil, err
@@ -168,11 +193,7 @@ func (g *GPTScript) ListDatasetElements(ctx context.Context, workspace, datasetI
 	return elements, nil
 }
 
-func (g *GPTScript) GetDatasetElement(ctx context.Context, workspace, datasetID, elementName string) (DatasetElement, error) {
-	if workspace == "" {
-		workspace = os.Getenv("GPTSCRIPT_WORKSPACE_DIR")
-	}
-
+func (g *GPTScript) GetDatasetElement(ctx context.Context, workspaceID, datasetID, elementName string) (DatasetElement, error) {
 	args := getDatasetElementArgs{
 		DatasetID: datasetID,
 		Element:   elementName,
@@ -184,8 +205,9 @@ func (g *GPTScript) GetDatasetElement(ctx context.Context, workspace, datasetID,
 
 	out, err := g.runBasicCommand(ctx, "datasets/get-element", datasetRequest{
 		Input:           string(argsJSON),
-		Workspace:       workspace,
+		WorkspaceID:     workspaceID,
 		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
+		Env:             g.globalOpts.Env,
 	})
 	if err != nil {
 		return DatasetElement{}, err
