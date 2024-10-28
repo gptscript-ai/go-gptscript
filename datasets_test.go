@@ -12,7 +12,7 @@ func TestDatasets(t *testing.T) {
 	require.NoError(t, err)
 
 	defer func() {
-		_ = g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: workspaceID})
+		_ = g.DeleteWorkspace(context.Background(), workspaceID)
 	}()
 
 	// Create a dataset

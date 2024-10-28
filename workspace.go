@@ -36,24 +36,13 @@ func (g *GPTScript) CreateWorkspace(ctx context.Context, providerType string, fr
 	return strings.TrimSpace(out), nil
 }
 
-type DeleteWorkspaceOptions struct {
-	WorkspaceID string
-}
-
-func (g *GPTScript) DeleteWorkspace(ctx context.Context, opts ...DeleteWorkspaceOptions) error {
-	var opt DeleteWorkspaceOptions
-	for _, o := range opts {
-		if o.WorkspaceID != "" {
-			opt.WorkspaceID = o.WorkspaceID
-		}
-	}
-
-	if opt.WorkspaceID == "" {
-		opt.WorkspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
+func (g *GPTScript) DeleteWorkspace(ctx context.Context, workspaceID string) error {
+	if workspaceID == "" {
+		return fmt.Errorf("workspace ID cannot be empty")
 	}
 
 	_, err := g.runBasicCommand(ctx, "workspaces/delete", map[string]any{
-		"id":            opt.WorkspaceID,
+		"id":            workspaceID,
 		"workspaceTool": g.globalOpts.WorkspaceTool,
 		"env":           g.globalOpts.Env,
 	})
