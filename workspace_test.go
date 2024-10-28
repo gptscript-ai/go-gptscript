@@ -53,6 +53,28 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 		t.Errorf("Unexpected content: %s", content)
 	}
 
+	// Stat the file to ensure it exists
+	fileInfo, err := g.StatFileInWorkspace(context.Background(), "test.txt", StatFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error statting file: %v", err)
+	}
+
+	if fileInfo.WorkspaceID != id {
+		t.Errorf("Unexpected file workspace ID: %v", fileInfo.WorkspaceID)
+	}
+
+	if fileInfo.Name != "test.txt" {
+		t.Errorf("Unexpected file name: %s", fileInfo.Name)
+	}
+
+	if fileInfo.Size != 4 {
+		t.Errorf("Unexpected file size: %d", fileInfo.Size)
+	}
+
+	if fileInfo.ModTime.IsZero() {
+		t.Errorf("Unexpected file mod time: %v", fileInfo.ModTime)
+	}
+
 	// Ensure we get the error we expect when trying to read a non-existent file
 	_, err = g.ReadFileInWorkspace(context.Background(), "test1.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
 	if nf := (*NotFoundInWorkspaceError)(nil); !errors.As(err, &nf) {
@@ -180,6 +202,28 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 
 	if !bytes.Equal(content, []byte("test")) {
 		t.Errorf("Unexpected content: %s", content)
+	}
+
+	// Stat the file to ensure it exists
+	fileInfo, err := g.StatFileInWorkspace(context.Background(), "test.txt", StatFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error statting file: %v", err)
+	}
+
+	if fileInfo.WorkspaceID != id {
+		t.Errorf("Unexpected file workspace ID: %v", fileInfo.WorkspaceID)
+	}
+
+	if fileInfo.Name != "test.txt" {
+		t.Errorf("Unexpected file name: %s", fileInfo.Name)
+	}
+
+	if fileInfo.Size != 4 {
+		t.Errorf("Unexpected file size: %d", fileInfo.Size)
+	}
+
+	if fileInfo.ModTime.IsZero() {
+		t.Errorf("Unexpected file mod time: %v", fileInfo.ModTime)
 	}
 
 	// Ensure we get the error we expect when trying to read a non-existent file

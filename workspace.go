@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type NotFoundInWorkspaceError struct {
@@ -206,4 +207,49 @@ func (g *GPTScript) ReadFileInWorkspace(ctx context.Context, filePath string, op
 	}
 
 	return base64.StdEncoding.DecodeString(out)
+}
+
+type StatFileInWorkspaceOptions struct {
+	WorkspaceID string
+}
+
+func (g *GPTScript) StatFileInWorkspace(ctx context.Context, filePath string, opts ...StatFileInWorkspaceOptions) (FileInfo, error) {
+	var opt StatFileInWorkspaceOptions
+	for _, o := range opts {
+		if o.WorkspaceID != "" {
+			opt.WorkspaceID = o.WorkspaceID
+		}
+	}
+
+	if opt.WorkspaceID == "" {
+		opt.WorkspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
+	}
+
+	out, err := g.runBasicCommand(ctx, "workspaces/stat-file", map[string]any{
+		"id":            opt.WorkspaceID,
+		"filePath":      filePath,
+		"workspaceTool": g.globalOpts.WorkspaceTool,
+		"env":           g.globalOpts.Env,
+	})
+	if err != nil {
+		if strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
+			return FileInfo{}, newNotFoundInWorkspaceError(opt.WorkspaceID, filePath)
+		}
+		return FileInfo{}, err
+	}
+
+	var info FileInfo
+	err = json.Unmarshal([]byte(out), &info)
+	if err != nil {
+		return FileInfo{}, err
+	}
+
+	return info, nil
+}
+
+type FileInfo struct {
+	WorkspaceID string
+	Name        string
+	Size        int64
+	ModTime     time.Time
 }
