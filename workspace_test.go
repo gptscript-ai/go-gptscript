@@ -8,13 +8,19 @@ import (
 	"testing"
 )
 
+func TestWorkspaceIDRequiredForDelete(t *testing.T) {
+	if err := g.DeleteWorkspace(context.Background(), ""); err == nil {
+		t.Error("Expected error but got nil")
+	}
+}
+
 func TestCreateAndDeleteWorkspace(t *testing.T) {
 	id, err := g.CreateWorkspace(context.Background(), "directory")
 	if err != nil {
 		t.Fatalf("Error creating workspace: %v", err)
 	}
 
-	err = g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
+	err = g.DeleteWorkspace(context.Background(), id)
 	if err != nil {
 		t.Errorf("Error deleting workspace: %v", err)
 	}
@@ -27,7 +33,7 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
+		err := g.DeleteWorkspace(context.Background(), id)
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
@@ -66,7 +72,7 @@ func TestLsComplexWorkspace(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
+		err := g.DeleteWorkspace(context.Background(), id)
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
@@ -139,7 +145,7 @@ func TestCreateAndDeleteWorkspaceS3(t *testing.T) {
 		t.Fatalf("Error creating workspace: %v", err)
 	}
 
-	err = g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
+	err = g.DeleteWorkspace(context.Background(), id)
 	if err != nil {
 		t.Errorf("Error deleting workspace: %v", err)
 	}
@@ -156,7 +162,7 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
+		err := g.DeleteWorkspace(context.Background(), id)
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
@@ -199,7 +205,7 @@ func TestLsComplexWorkspaceS3(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		err := g.DeleteWorkspace(context.Background(), DeleteWorkspaceOptions{WorkspaceID: id})
+		err := g.DeleteWorkspace(context.Background(), id)
 		if err != nil {
 			t.Errorf("Error deleting workspace: %v", err)
 		}
