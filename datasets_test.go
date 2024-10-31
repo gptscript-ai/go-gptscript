@@ -23,7 +23,7 @@ func TestDatasets(t *testing.T) {
 	require.Equal(t, 0, len(dataset.Elements))
 
 	// Add an element
-	elementMeta, err := g.AddDatasetElement(context.Background(), workspaceID, dataset.ID, "test-element", "This is a test element", "This is the content")
+	elementMeta, err := g.AddDatasetElement(context.Background(), workspaceID, dataset.ID, "test-element", "This is a test element", []byte("This is the content"))
 	require.NoError(t, err)
 	require.Equal(t, "test-element", elementMeta.Name)
 	require.Equal(t, "This is a test element", elementMeta.Description)
@@ -35,14 +35,14 @@ func TestDatasets(t *testing.T) {
 				Name:        "test-element-2",
 				Description: "This is a test element 2",
 			},
-			Contents: "This is the content 2",
+			Contents: []byte("This is the content 2"),
 		},
 		{
 			DatasetElementMeta: DatasetElementMeta{
 				Name:        "test-element-3",
 				Description: "This is a test element 3",
 			},
-			Contents: "This is the content 3",
+			Contents: []byte("This is the content 3"),
 		},
 	})
 	require.NoError(t, err)
@@ -52,14 +52,14 @@ func TestDatasets(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "test-element", element.Name)
 	require.Equal(t, "This is a test element", element.Description)
-	require.Equal(t, "This is the content", element.Contents)
+	require.Equal(t, []byte("This is the content"), element.Contents)
 
 	// Get the third element
 	element, err = g.GetDatasetElement(context.Background(), workspaceID, dataset.ID, "test-element-3")
 	require.NoError(t, err)
 	require.Equal(t, "test-element-3", element.Name)
 	require.Equal(t, "This is a test element 3", element.Description)
-	require.Equal(t, "This is the content 3", element.Contents)
+	require.Equal(t, []byte("This is the content 3"), element.Contents)
 
 	// List elements in the dataset
 	elements, err := g.ListDatasetElements(context.Background(), workspaceID, dataset.ID)

@@ -2,6 +2,7 @@ package gptscript
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,7 +15,7 @@ type DatasetElementMeta struct {
 
 type DatasetElement struct {
 	DatasetElementMeta `json:",inline"`
-	Contents           string `json:"contents"`
+	Contents           []byte `json:"contents"`
 }
 
 type DatasetMeta struct {
@@ -115,7 +116,7 @@ func (g *GPTScript) CreateDataset(ctx context.Context, workspaceID, name, descri
 	return dataset, nil
 }
 
-func (g *GPTScript) AddDatasetElement(ctx context.Context, workspaceID, datasetID, elementName, elementDescription, elementContent string) (DatasetElementMeta, error) {
+func (g *GPTScript) AddDatasetElement(ctx context.Context, workspaceID, datasetID, elementName, elementDescription string, elementContent []byte) (DatasetElementMeta, error) {
 	if workspaceID == "" {
 		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
 	}
@@ -124,7 +125,7 @@ func (g *GPTScript) AddDatasetElement(ctx context.Context, workspaceID, datasetI
 		DatasetID:          datasetID,
 		ElementName:        elementName,
 		ElementDescription: elementDescription,
-		ElementContent:     elementContent,
+		ElementContent:     base64.StdEncoding.EncodeToString(elementContent),
 	}
 	argsJSON, err := json.Marshal(args)
 	if err != nil {
