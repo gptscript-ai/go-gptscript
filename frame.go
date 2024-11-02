@@ -49,6 +49,17 @@ type RunFrame struct {
 	Type      EventType `json:"type"`
 }
 
+type CallFrames map[string]CallFrame
+
+func (c CallFrames) ParentCallFrame() CallFrame {
+	for _, call := range c {
+		if call.ParentID == "" && call.ToolCategory == NoCategory {
+			return call
+		}
+	}
+	return CallFrame{}
+}
+
 type CallFrame struct {
 	CallContext `json:",inline"`
 
