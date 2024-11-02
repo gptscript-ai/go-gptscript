@@ -36,15 +36,14 @@ type Run struct {
 	wait                              func()
 	basicCommand                      bool
 
-	program           *Program
-	callsLock         sync.RWMutex
-	calls             map[string]CallFrame
-	parentCallFrameID string
-	rawOutput         map[string]any
-	output, errput    string
-	events            chan Frame
-	lock              sync.Mutex
-	responseCode      int
+	program        *Program
+	callsLock      sync.RWMutex
+	calls          CallFrames
+	rawOutput      map[string]any
+	output, errput string
+	events         chan Frame
+	lock           sync.Mutex
+	responseCode   int
 }
 
 // Text returns the text output of the gptscript. It blocks until the output is ready.
@@ -104,7 +103,7 @@ func (r *Run) RespondingTool() Tool {
 }
 
 // Calls will return a flattened array of the calls for this run.
-func (r *Run) Calls() map[string]CallFrame {
+func (r *Run) Calls() CallFrames {
 	r.callsLock.RLock()
 	defer r.callsLock.RUnlock()
 	return maps.Clone(r.calls)
@@ -115,11 +114,7 @@ func (r *Run) ParentCallFrame() (CallFrame, bool) {
 	r.callsLock.RLock()
 	defer r.callsLock.RUnlock()
 
-	if r.parentCallFrameID == "" {
-		return CallFrame{}, false
-	}
-
-	return r.calls[r.parentCallFrameID], true
+	return r.calls.ParentCallFrame(), true
 }
 
 // ErrorOutput returns the stderr output of the gptscript.
@@ -394,9 +389,6 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 					if event.Call != nil {
 						r.callsLock.Lock()
 						r.calls[event.Call.ID] = *event.Call
-						if r.parentCallFrameID == "" && event.Call.ParentID == "" {
-							r.parentCallFrameID = event.Call.ID
-						}
 						r.callsLock.Unlock()
 					} else if event.Run != nil {
 						if event.Run.Type == EventTypeRunStart {
