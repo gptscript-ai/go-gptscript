@@ -2,6 +2,7 @@ package gptscript
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,66 +12,78 @@ func TestDatasets(t *testing.T) {
 	workspaceID, err := g.CreateWorkspace(context.Background(), "directory")
 	require.NoError(t, err)
 
+	require.NoError(t, os.Setenv("GPTSCRIPT_WORKSPACE_ID", workspaceID))
+
 	defer func() {
 		_ = g.DeleteWorkspace(context.Background(), workspaceID)
 	}()
 
-	// Create a dataset
-	dataset, err := g.CreateDataset(context.Background(), workspaceID, "test-dataset", "This is a test dataset")
+	datasetID, err := g.CreateDatasetWithElements(context.Background(), []DatasetElement{
+		{
+			DatasetElementMeta: DatasetElementMeta{
+				Name:        "test-element-1",
+				Description: "This is a test element 1",
+			},
+			Contents: "This is the content 1",
+		},
+	})
 	require.NoError(t, err)
-	require.Equal(t, "test-dataset", dataset.Name)
-	require.Equal(t, "This is a test dataset", dataset.Description)
-	require.Equal(t, 0, len(dataset.Elements))
 
-	// Add an element
-	elementMeta, err := g.AddDatasetElement(context.Background(), workspaceID, dataset.ID, "test-element", "This is a test element", []byte("This is the content"))
-	require.NoError(t, err)
-	require.Equal(t, "test-element", elementMeta.Name)
-	require.Equal(t, "This is a test element", elementMeta.Description)
-
-	// Add two more
-	err = g.AddDatasetElements(context.Background(), workspaceID, dataset.ID, []DatasetElement{
+	// Add two more elements
+	_, err = g.AddDatasetElements(context.Background(), datasetID, []DatasetElement{
 		{
 			DatasetElementMeta: DatasetElementMeta{
 				Name:        "test-element-2",
 				Description: "This is a test element 2",
 			},
-			Contents: []byte("This is the content 2"),
+			Contents: "This is the content 2",
 		},
 		{
 			DatasetElementMeta: DatasetElementMeta{
 				Name:        "test-element-3",
 				Description: "This is a test element 3",
 			},
-			Contents: []byte("This is the content 3"),
+			Contents: "This is the content 3",
+		},
+		{
+			DatasetElementMeta: DatasetElementMeta{
+				Name:        "binary-element",
+				Description: "this element has binary contents",
+			},
+			BinaryContents: []byte("binary contents"),
 		},
 	})
 	require.NoError(t, err)
 
 	// Get the first element
-	element, err := g.GetDatasetElement(context.Background(), workspaceID, dataset.ID, "test-element")
+	element, err := g.GetDatasetElement(context.Background(), datasetID, "test-element-1")
 	require.NoError(t, err)
-	require.Equal(t, "test-element", element.Name)
-	require.Equal(t, "This is a test element", element.Description)
-	require.Equal(t, []byte("This is the content"), element.Contents)
+	require.Equal(t, "test-element-1", element.Name)
+	require.Equal(t, "This is a test element 1", element.Description)
+	require.Equal(t, "This is the content 1", element.Contents)
 
 	// Get the third element
-	element, err = g.GetDatasetElement(context.Background(), workspaceID, dataset.ID, "test-element-3")
+	element, err = g.GetDatasetElement(context.Background(), datasetID, "test-element-3")
 	require.NoError(t, err)
 	require.Equal(t, "test-element-3", element.Name)
 	require.Equal(t, "This is a test element 3", element.Description)
-	require.Equal(t, []byte("This is the content 3"), element.Contents)
+	require.Equal(t, "This is the content 3", element.Contents)
+
+	// Get the binary element
+	element, err = g.GetDatasetElement(context.Background(), datasetID, "binary-element")
+	require.NoError(t, err)
+	require.Equal(t, "binary-element", element.Name)
+	require.Equal(t, "this element has binary contents", element.Description)
+	require.Equal(t, []byte("binary contents"), element.BinaryContents)
 
 	// List elements in the dataset
-	elements, err := g.ListDatasetElements(context.Background(), workspaceID, dataset.ID)
+	elements, err := g.ListDatasetElements(context.Background(), datasetID)
 	require.NoError(t, err)
-	require.Equal(t, 3, len(elements))
+	require.Equal(t, 4, len(elements))
 
 	// List datasets
-	datasets, err := g.ListDatasets(context.Background(), workspaceID)
+	datasetIDs, err := g.ListDatasets(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, 1, len(datasets))
-	require.Equal(t, "test-dataset", datasets[0].Name)
-	require.Equal(t, "This is a test dataset", datasets[0].Description)
-	require.Equal(t, dataset.ID, datasets[0].ID)
+	require.Equal(t, 1, len(datasetIDs))
+	require.Equal(t, datasetID, datasetIDs[0])
 }
