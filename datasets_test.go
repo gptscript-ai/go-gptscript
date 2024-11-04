@@ -29,7 +29,7 @@ func TestDatasets(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Add two more elements
+	// Add three more elements
 	_, err = g.AddDatasetElements(context.Background(), datasetID, []DatasetElement{
 		{
 			DatasetElementMeta: DatasetElementMeta{
