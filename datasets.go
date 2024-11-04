@@ -18,12 +18,6 @@ type DatasetElement struct {
 	BinaryContents     []byte `json:"binaryContents"`
 }
 
-type Dataset struct {
-	ID       string                        `json:"id"`
-	BaseDir  string                        `json:"baseDir,omitempty"`
-	Elements map[string]DatasetElementMeta `json:"elements"`
-}
-
 type datasetRequest struct {
 	Input       string   `json:"input"`
 	DatasetTool string   `json:"datasetTool"`
