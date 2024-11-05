@@ -19,7 +19,6 @@ type DatasetElement struct {
 }
 
 type datasetRequest struct {
-	WorkspaceID string   `json:"workspaceID"`
 	Input       string   `json:"input"`
 	DatasetTool string   `json:"datasetTool"`
 	Env         []string `json:"env"`
@@ -42,9 +41,8 @@ type getDatasetElementArgs struct {
 func (g *GPTScript) ListDatasets(ctx context.Context) ([]string, error) {
 	out, err := g.runBasicCommand(ctx, "datasets", datasetRequest{
 		Input:       "{}",
-		WorkspaceID: os.Getenv("GPTSCRIPT_WORKSPACE_ID"),
 		DatasetTool: g.globalOpts.DatasetTool,
-		Env:         g.globalOpts.Env,
+		Env:         append(g.globalOpts.Env, "GPTSCRIPT_WORKSPACE_ID="+os.Getenv("GPTSCRIPT_WORKSPACE_ID")),
 	})
 	if err != nil {
 		return nil, err
@@ -73,9 +71,8 @@ func (g *GPTScript) AddDatasetElements(ctx context.Context, datasetID string, el
 
 	return g.runBasicCommand(ctx, "datasets/add-elements", datasetRequest{
 		Input:       string(argsJSON),
-		WorkspaceID: os.Getenv("GPTSCRIPT_WORKSPACE_ID"),
 		DatasetTool: g.globalOpts.DatasetTool,
-		Env:         g.globalOpts.Env,
+		Env:         append(g.globalOpts.Env, "GPTSCRIPT_WORKSPACE_ID="+os.Getenv("GPTSCRIPT_WORKSPACE_ID")),
 	})
 }
 
@@ -90,9 +87,8 @@ func (g *GPTScript) ListDatasetElements(ctx context.Context, datasetID string) (
 
 	out, err := g.runBasicCommand(ctx, "datasets/list-elements", datasetRequest{
 		Input:       string(argsJSON),
-		WorkspaceID: os.Getenv("GPTSCRIPT_WORKSPACE_ID"),
 		DatasetTool: g.globalOpts.DatasetTool,
-		Env:         g.globalOpts.Env,
+		Env:         append(g.globalOpts.Env, "GPTSCRIPT_WORKSPACE_ID="+os.Getenv("GPTSCRIPT_WORKSPACE_ID")),
 	})
 	if err != nil {
 		return nil, err
@@ -117,9 +113,8 @@ func (g *GPTScript) GetDatasetElement(ctx context.Context, datasetID, elementNam
 
 	out, err := g.runBasicCommand(ctx, "datasets/get-element", datasetRequest{
 		Input:       string(argsJSON),
-		WorkspaceID: os.Getenv("GPTSCRIPT_WORKSPACE_ID"),
 		DatasetTool: g.globalOpts.DatasetTool,
-		Env:         g.globalOpts.Env,
+		Env:         append(g.globalOpts.Env, "GPTSCRIPT_WORKSPACE_ID="+os.Getenv("GPTSCRIPT_WORKSPACE_ID")),
 	})
 	if err != nil {
 		return DatasetElement{}, err
