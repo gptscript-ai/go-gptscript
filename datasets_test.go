@@ -26,6 +26,9 @@ func TestDatasets(t *testing.T) {
 			},
 			Contents: "This is the content 1",
 		},
+	}, DatasetOptions{
+		Name:        "test-dataset",
+		Description: "this is a test dataset",
 	})
 	require.NoError(t, err)
 
@@ -82,8 +85,10 @@ func TestDatasets(t *testing.T) {
 	require.Equal(t, 4, len(elements))
 
 	// List datasets
-	datasetIDs, err := g.ListDatasets(context.Background())
+	datasets, err := g.ListDatasets(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, 1, len(datasetIDs))
-	require.Equal(t, datasetID, datasetIDs[0])
+	require.Equal(t, 1, len(datasets))
+	require.Equal(t, datasetID, datasets[0].ID)
+	require.Equal(t, "test-dataset", datasets[0].Name)
+	require.Equal(t, "this is a test dataset", datasets[0].Description)
 }

@@ -18,6 +18,12 @@ type DatasetElement struct {
 	BinaryContents     []byte `json:"binaryContents"`
 }
 
+type DatasetMeta struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
 type datasetRequest struct {
 	Input       string   `json:"input"`
 	DatasetTool string   `json:"datasetTool"`
@@ -25,8 +31,10 @@ type datasetRequest struct {
 }
 
 type addDatasetElementsArgs struct {
-	DatasetID string           `json:"datasetID"`
-	Elements  []DatasetElement `json:"elements"`
+	DatasetID   string           `json:"datasetID"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Elements    []DatasetElement `json:"elements"`
 }
 
 type listDatasetElementArgs struct {
@@ -38,7 +46,7 @@ type getDatasetElementArgs struct {
 	Element   string `json:"name"`
 }
 
-func (g *GPTScript) ListDatasets(ctx context.Context) ([]string, error) {
+func (g *GPTScript) ListDatasets(ctx context.Context) ([]DatasetMeta, error) {
 	out, err := g.runBasicCommand(ctx, "datasets", datasetRequest{
 		Input:       "{}",
 		DatasetTool: g.globalOpts.DatasetTool,
@@ -48,22 +56,36 @@ func (g *GPTScript) ListDatasets(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	var datasets []string
+	var datasets []DatasetMeta
 	if err = json.Unmarshal([]byte(out), &datasets); err != nil {
 		return nil, err
 	}
 	return datasets, nil
 }
 
-func (g *GPTScript) CreateDatasetWithElements(ctx context.Context, elements []DatasetElement) (string, error) {
-	return g.AddDatasetElements(ctx, "", elements)
+type DatasetOptions struct {
+	Name, Description string
 }
 
-func (g *GPTScript) AddDatasetElements(ctx context.Context, datasetID string, elements []DatasetElement) (string, error) {
+func (g *GPTScript) CreateDatasetWithElements(ctx context.Context, elements []DatasetElement, options ...DatasetOptions) (string, error) {
+	return g.AddDatasetElements(ctx, "", elements, options...)
+}
+
+func (g *GPTScript) AddDatasetElements(ctx context.Context, datasetID string, elements []DatasetElement, options ...DatasetOptions) (string, error) {
 	args := addDatasetElementsArgs{
 		DatasetID: datasetID,
 		Elements:  elements,
 	}
+
+	for _, opt := range options {
+		if opt.Name != "" {
+			args.Name = opt.Name
+		}
+		if opt.Description != "" {
+			args.Description = opt.Description
+		}
+	}
+
 	argsJSON, err := json.Marshal(args)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal element args: %w", err)
