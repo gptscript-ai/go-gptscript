@@ -14,7 +14,7 @@ func TestDatasets(t *testing.T) {
 
 	client, err := NewGPTScript(GlobalOptions{
 		OpenAIAPIKey: os.Getenv("OPENAI_API_KEY"),
-		Env:          []string{"GPTSCRIPT_WORKSPACE_ID=" + workspaceID},
+		Env:          append(os.Environ(), "GPTSCRIPT_WORKSPACE_ID="+workspaceID),
 	})
 	require.NoError(t, err)
 
