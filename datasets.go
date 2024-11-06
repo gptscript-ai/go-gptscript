@@ -2,10 +2,8 @@ package gptscript
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 )
 
 type DatasetElementMeta struct {
@@ -15,7 +13,8 @@ type DatasetElementMeta struct {
 
 type DatasetElement struct {
 	DatasetElementMeta `json:",inline"`
-	Contents           []byte `json:"contents"`
+	Contents           string `json:"contents"`
+	BinaryContents     []byte `json:"binaryContents"`
 }
 
 type DatasetMeta struct {
@@ -24,34 +23,17 @@ type DatasetMeta struct {
 	Description string `json:"description"`
 }
 
-type Dataset struct {
-	DatasetMeta `json:",inline"`
-	BaseDir     string                        `json:"baseDir,omitempty"`
-	Elements    map[string]DatasetElementMeta `json:"elements"`
-}
-
 type datasetRequest struct {
-	Input           string   `json:"input"`
-	WorkspaceID     string   `json:"workspaceID"`
-	DatasetToolRepo string   `json:"datasetToolRepo"`
-	Env             []string `json:"env"`
-}
-
-type createDatasetArgs struct {
-	Name        string `json:"datasetName"`
-	Description string `json:"datasetDescription"`
-}
-
-type addDatasetElementArgs struct {
-	DatasetID          string `json:"datasetID"`
-	ElementName        string `json:"elementName"`
-	ElementDescription string `json:"elementDescription"`
-	ElementContent     string `json:"elementContent"`
+	Input       string   `json:"input"`
+	DatasetTool string   `json:"datasetTool"`
+	Env         []string `json:"env"`
 }
 
 type addDatasetElementsArgs struct {
-	DatasetID string           `json:"datasetID"`
-	Elements  []DatasetElement `json:"elements"`
+	DatasetID   string           `json:"datasetID"`
+	Name        string           `json:"name"`
+	Description string           `json:"description"`
+	Elements    []DatasetElement `json:"elements"`
 }
 
 type listDatasetElementArgs struct {
@@ -60,19 +42,14 @@ type listDatasetElementArgs struct {
 
 type getDatasetElementArgs struct {
 	DatasetID string `json:"datasetID"`
-	Element   string `json:"element"`
+	Element   string `json:"name"`
 }
 
-func (g *GPTScript) ListDatasets(ctx context.Context, workspaceID string) ([]DatasetMeta, error) {
-	if workspaceID == "" {
-		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
-	}
-
+func (g *GPTScript) ListDatasets(ctx context.Context) ([]DatasetMeta, error) {
 	out, err := g.runBasicCommand(ctx, "datasets", datasetRequest{
-		Input:           "{}",
-		WorkspaceID:     workspaceID,
-		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
-		Env:             g.globalOpts.Env,
+		Input:       "{}",
+		DatasetTool: g.globalOpts.DatasetTool,
+		Env:         g.globalOpts.Env,
 	})
 	if err != nil {
 		return nil, err
@@ -85,98 +62,42 @@ func (g *GPTScript) ListDatasets(ctx context.Context, workspaceID string) ([]Dat
 	return datasets, nil
 }
 
-func (g *GPTScript) CreateDataset(ctx context.Context, workspaceID, name, description string) (Dataset, error) {
-	if workspaceID == "" {
-		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
-	}
-
-	args := createDatasetArgs{
-		Name:        name,
-		Description: description,
-	}
-	argsJSON, err := json.Marshal(args)
-	if err != nil {
-		return Dataset{}, fmt.Errorf("failed to marshal dataset args: %w", err)
-	}
-
-	out, err := g.runBasicCommand(ctx, "datasets/create", datasetRequest{
-		Input:           string(argsJSON),
-		WorkspaceID:     workspaceID,
-		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
-		Env:             g.globalOpts.Env,
-	})
-	if err != nil {
-		return Dataset{}, err
-	}
-
-	var dataset Dataset
-	if err = json.Unmarshal([]byte(out), &dataset); err != nil {
-		return Dataset{}, err
-	}
-	return dataset, nil
+type DatasetOptions struct {
+	Name, Description string
 }
 
-func (g *GPTScript) AddDatasetElement(ctx context.Context, workspaceID, datasetID, elementName, elementDescription string, elementContent []byte) (DatasetElementMeta, error) {
-	if workspaceID == "" {
-		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
-	}
-
-	args := addDatasetElementArgs{
-		DatasetID:          datasetID,
-		ElementName:        elementName,
-		ElementDescription: elementDescription,
-		ElementContent:     base64.StdEncoding.EncodeToString(elementContent),
-	}
-	argsJSON, err := json.Marshal(args)
-	if err != nil {
-		return DatasetElementMeta{}, fmt.Errorf("failed to marshal element args: %w", err)
-	}
-
-	out, err := g.runBasicCommand(ctx, "datasets/add-element", datasetRequest{
-		Input:           string(argsJSON),
-		WorkspaceID:     workspaceID,
-		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
-		Env:             g.globalOpts.Env,
-	})
-	if err != nil {
-		return DatasetElementMeta{}, err
-	}
-
-	var element DatasetElementMeta
-	if err = json.Unmarshal([]byte(out), &element); err != nil {
-		return DatasetElementMeta{}, err
-	}
-	return element, nil
+func (g *GPTScript) CreateDatasetWithElements(ctx context.Context, elements []DatasetElement, options ...DatasetOptions) (string, error) {
+	return g.AddDatasetElements(ctx, "", elements, options...)
 }
 
-func (g *GPTScript) AddDatasetElements(ctx context.Context, workspaceID, datasetID string, elements []DatasetElement) error {
-	if workspaceID == "" {
-		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
-	}
-
+func (g *GPTScript) AddDatasetElements(ctx context.Context, datasetID string, elements []DatasetElement, options ...DatasetOptions) (string, error) {
 	args := addDatasetElementsArgs{
 		DatasetID: datasetID,
 		Elements:  elements,
 	}
+
+	for _, opt := range options {
+		if opt.Name != "" {
+			args.Name = opt.Name
+		}
+		if opt.Description != "" {
+			args.Description = opt.Description
+		}
+	}
+
 	argsJSON, err := json.Marshal(args)
 	if err != nil {
-		return fmt.Errorf("failed to marshal element args: %w", err)
+		return "", fmt.Errorf("failed to marshal element args: %w", err)
 	}
 
-	_, err = g.runBasicCommand(ctx, "datasets/add-elements", datasetRequest{
-		Input:           string(argsJSON),
-		WorkspaceID:     workspaceID,
-		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
-		Env:             g.globalOpts.Env,
+	return g.runBasicCommand(ctx, "datasets/add-elements", datasetRequest{
+		Input:       string(argsJSON),
+		DatasetTool: g.globalOpts.DatasetTool,
+		Env:         g.globalOpts.Env,
 	})
-	return err
 }
 
-func (g *GPTScript) ListDatasetElements(ctx context.Context, workspaceID, datasetID string) ([]DatasetElementMeta, error) {
-	if workspaceID == "" {
-		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
-	}
-
+func (g *GPTScript) ListDatasetElements(ctx context.Context, datasetID string) ([]DatasetElementMeta, error) {
 	args := listDatasetElementArgs{
 		DatasetID: datasetID,
 	}
@@ -186,10 +107,9 @@ func (g *GPTScript) ListDatasetElements(ctx context.Context, workspaceID, datase
 	}
 
 	out, err := g.runBasicCommand(ctx, "datasets/list-elements", datasetRequest{
-		Input:           string(argsJSON),
-		WorkspaceID:     workspaceID,
-		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
-		Env:             g.globalOpts.Env,
+		Input:       string(argsJSON),
+		DatasetTool: g.globalOpts.DatasetTool,
+		Env:         g.globalOpts.Env,
 	})
 	if err != nil {
 		return nil, err
@@ -202,11 +122,7 @@ func (g *GPTScript) ListDatasetElements(ctx context.Context, workspaceID, datase
 	return elements, nil
 }
 
-func (g *GPTScript) GetDatasetElement(ctx context.Context, workspaceID, datasetID, elementName string) (DatasetElement, error) {
-	if workspaceID == "" {
-		workspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
-	}
-
+func (g *GPTScript) GetDatasetElement(ctx context.Context, datasetID, elementName string) (DatasetElement, error) {
 	args := getDatasetElementArgs{
 		DatasetID: datasetID,
 		Element:   elementName,
@@ -217,10 +133,9 @@ func (g *GPTScript) GetDatasetElement(ctx context.Context, workspaceID, datasetI
 	}
 
 	out, err := g.runBasicCommand(ctx, "datasets/get-element", datasetRequest{
-		Input:           string(argsJSON),
-		WorkspaceID:     workspaceID,
-		DatasetToolRepo: g.globalOpts.DatasetToolRepo,
-		Env:             g.globalOpts.Env,
+		Input:       string(argsJSON),
+		DatasetTool: g.globalOpts.DatasetTool,
+		Env:         g.globalOpts.Env,
 	})
 	if err != nil {
 		return DatasetElement{}, err
