@@ -135,10 +135,13 @@ func (r *Run) Close() error {
 		return fmt.Errorf("run not started")
 	}
 
-	if !r.lock.TryLock() {
-		// If we can't get the lock, then the run is still running. Abort it.
-		r.cancel(errAbortRun)
+	if r.lock.TryLock() {
+		r.lock.Unlock()
+		// If we can get the lock, then the run isn't running, so nothing to do.
+		return nil
 	}
+
+	r.cancel(errAbortRun)
 	if r.wait == nil {
 		return nil
 	}
