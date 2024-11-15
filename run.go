@@ -260,7 +260,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 	r.responseCode = resp.StatusCode
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusBadRequest {
 		r.state = Error
-		r.err = fmt.Errorf("run encountered an error")
+		r.err = fmt.Errorf("run encountered an error: status code %d", resp.StatusCode)
 	} else {
 		r.state = Running
 	}
