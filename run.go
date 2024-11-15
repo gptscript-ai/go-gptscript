@@ -135,7 +135,10 @@ func (r *Run) Close() error {
 		return fmt.Errorf("run not started")
 	}
 
-	r.cancel(errAbortRun)
+	if !r.lock.TryLock() {
+		// If we can't get the lock, then the run is still running. Abort it.
+		r.cancel(errAbortRun)
+	}
 	if r.wait == nil {
 		return nil
 	}
@@ -285,10 +288,10 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 		)
 		defer func() {
 			resp.Body.Close()
-			close(r.events)
 			cancel(r.err)
 			r.wait()
 			r.lock.Unlock()
+			close(r.events)
 		}()
 
 		r.callsLock.Lock()
