@@ -75,6 +75,10 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 		t.Errorf("Unexpected file mod time: %v", fileInfo.ModTime)
 	}
 
+	if fileInfo.MimeType != "text/plain" {
+		t.Errorf("Unexpected file mime type: %s", fileInfo.MimeType)
+	}
+
 	// Ensure we get the error we expect when trying to read a non-existent file
 	_, err = g.ReadFileInWorkspace(context.Background(), "test1.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
 	if nf := (*NotFoundInWorkspaceError)(nil); !errors.As(err, &nf) {
@@ -224,6 +228,10 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 
 	if fileInfo.ModTime.IsZero() {
 		t.Errorf("Unexpected file mod time: %v", fileInfo.ModTime)
+	}
+
+	if fileInfo.MimeType != "text/plain" {
+		t.Errorf("Unexpected file mime type: %s", fileInfo.MimeType)
 	}
 
 	// Ensure we get the error we expect when trying to read a non-existent file
