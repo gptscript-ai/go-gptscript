@@ -252,4 +252,5 @@ type FileInfo struct {
 	Name        string
 	Size        int64
 	ModTime     time.Time
+	MimeType    string
 }
