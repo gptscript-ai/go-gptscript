@@ -15,7 +15,7 @@ import (
 func CreateServer() (*http.Server, error) {
 	tlsConfig, err := getTLSConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get TLS config: %v\n", err)
+		return nil, fmt.Errorf("failed to get TLS config: %v", err)
 	}
 
 	server := &http.Server{
@@ -29,7 +29,7 @@ func CreateServer() (*http.Server, error) {
 // This is for use with daemon tools.
 func StartServer(server *http.Server) error {
 	if err := server.ListenAndServeTLS("", ""); err != nil {
-		return fmt.Errorf("stopped serving: %v\n", err)
+		return fmt.Errorf("stopped serving: %v", err)
 	}
 	return nil
 }
@@ -49,22 +49,22 @@ func getTLSConfig() (*tls.Config, error) {
 
 	certBytes, err := base64.StdEncoding.DecodeString(certB64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode cert base64: %v\n", err)
+		return nil, fmt.Errorf("failed to decode cert base64: %v", err)
 	}
 
 	privateKeyBytes, err := base64.StdEncoding.DecodeString(privateKeyB64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode private key base64: %v\n", err)
+		return nil, fmt.Errorf("failed to decode private key base64: %v", err)
 	}
 
 	gptscriptCertBytes, err := base64.StdEncoding.DecodeString(gptscriptCertB64)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode gptscript cert base64: %v\n", err)
+		return nil, fmt.Errorf("failed to decode gptscript cert base64: %v", err)
 	}
 
 	cert, err := tls.X509KeyPair(certBytes, privateKeyBytes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create X509 key pair: %v\n", err)
+		return nil, fmt.Errorf("failed to create X509 key pair: %v", err)
 	}
 
 	pool := x509.NewCertPool()
