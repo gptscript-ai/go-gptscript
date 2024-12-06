@@ -25,6 +25,23 @@ func CreateServer() (*http.Server, error) {
 	return server, nil
 }
 
+// CreateServerWithMux creates a new HTTP server with TLS configured for GPTScript.
+// This function should be used when creating a new server for a daemon tool with a custom ServeMux.
+// The server should then be started with the StartServer function.
+func CreateServerWithMux(mux *http.ServeMux) (*http.Server, error) {
+	tlsConfig, err := getTLSConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get TLS config: %v", err)
+	}
+
+	server := &http.Server{
+		Addr:      fmt.Sprintf("127.0.0.1:%s", os.Getenv("PORT")),
+		TLSConfig: tlsConfig,
+		Handler:   mux,
+	}
+	return server, nil
+}
+
 // StartServer starts an HTTP server created by the CreateServer function.
 // This is for use with daemon tools.
 func StartServer(server *http.Server) error {
