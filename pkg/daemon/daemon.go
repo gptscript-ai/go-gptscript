@@ -4,51 +4,56 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
 )
 
+type Server struct {
+	mux       *http.ServeMux
+	tlsConfig *tls.Config
+}
+
 // CreateServer creates a new HTTP server with TLS configured for GPTScript.
 // This function should be used when creating a new server for a daemon tool.
 // The server should then be started with the StartServer function.
-func CreateServer() (*http.Server, error) {
-	tlsConfig, err := getTLSConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get TLS config: %v", err)
-	}
-
-	server := &http.Server{
-		Addr:      fmt.Sprintf("127.0.0.1:%s", os.Getenv("PORT")),
-		TLSConfig: tlsConfig,
-	}
-	return server, nil
+func CreateServer() (*Server, error) {
+	return CreateServerWithMux(http.DefaultServeMux)
 }
 
 // CreateServerWithMux creates a new HTTP server with TLS configured for GPTScript.
 // This function should be used when creating a new server for a daemon tool with a custom ServeMux.
 // The server should then be started with the StartServer function.
-func CreateServerWithMux(mux *http.ServeMux) (*http.Server, error) {
+func CreateServerWithMux(mux *http.ServeMux) (*Server, error) {
 	tlsConfig, err := getTLSConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get TLS config: %v", err)
 	}
 
-	server := &http.Server{
-		Addr:      fmt.Sprintf("127.0.0.1:%s", os.Getenv("PORT")),
-		TLSConfig: tlsConfig,
-		Handler:   mux,
-	}
-	return server, nil
+	return &Server{
+		mux:       mux,
+		tlsConfig: tlsConfig,
+	}, nil
 }
 
-// StartServer starts an HTTP server created by the CreateServer function.
+// Start starts an HTTP server created by the CreateServer function.
 // This is for use with daemon tools.
-func StartServer(server *http.Server) error {
-	if err := server.ListenAndServeTLS("", ""); err != nil {
+func (s *Server) Start() error {
+	server := &http.Server{
+		Addr:      fmt.Sprintf("127.0.0.1:%s", os.Getenv("PORT")),
+		TLSConfig: s.tlsConfig,
+		Handler:   s.mux,
+	}
+
+	if err := server.ListenAndServeTLS("", ""); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return fmt.Errorf("stopped serving: %v", err)
 	}
 	return nil
+}
+
+func (s *Server) HandleFunc(pattern string, handler http.HandlerFunc) {
+	s.mux.HandleFunc(pattern, handler)
 }
 
 func getTLSConfig() (*tls.Config, error) {
