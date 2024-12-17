@@ -98,8 +98,8 @@ func TestListModelsWithProvider(t *testing.T) {
 	}
 
 	for _, model := range models {
-		if !strings.HasPrefix(model, "claude-3-") || !strings.HasSuffix(model, "from github.com/gptscript-ai/claude3-anthropic-provider") {
-			t.Errorf("Unexpected model name: %s", model)
+		if !strings.HasPrefix(model.ID, "claude-3-") || !strings.HasSuffix(model.ID, "from github.com/gptscript-ai/claude3-anthropic-provider") {
+			t.Errorf("Unexpected model name: %s", model.ID)
 		}
 	}
 }
@@ -128,8 +128,8 @@ func TestListModelsWithDefaultProvider(t *testing.T) {
 	}
 
 	for _, model := range models {
-		if !strings.HasPrefix(model, "claude-3-") || !strings.HasSuffix(model, "from github.com/gptscript-ai/claude3-anthropic-provider") {
-			t.Errorf("Unexpected model name: %s", model)
+		if !strings.HasPrefix(model.ID, "claude-3-") || !strings.HasSuffix(model.ID, "from github.com/gptscript-ai/claude3-anthropic-provider") {
+			t.Errorf("Unexpected model name: %s", model.ID)
 		}
 	}
 }
