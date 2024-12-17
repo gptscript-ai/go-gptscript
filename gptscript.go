@@ -294,7 +294,7 @@ type ListModelsOptions struct {
 }
 
 // ListModels will list all the available models.
-func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) ([]string, error) {
+func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) ([]Model, error) {
 	var o ListModelsOptions
 	for _, opt := range opts {
 		o.Providers = append(o.Providers, opt.Providers...)
@@ -314,7 +314,11 @@ func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) (
 		return nil, err
 	}
 
-	return strings.Split(strings.TrimSpace(out), "\n"), nil
+	var models []Model
+	if err = json.Unmarshal([]byte(out), &models); err != nil {
+		return nil, err
+	}
+	return models, nil
 }
 
 func (g *GPTScript) Confirm(ctx context.Context, resp AuthResponse) error {
