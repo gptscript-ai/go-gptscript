@@ -293,8 +293,34 @@ type ListModelsOptions struct {
 	CredentialOverrides []string
 }
 
+type Model struct {
+	CreatedAt  int64             `json:"created"`
+	ID         string            `json:"id"`
+	Object     string            `json:"object"`
+	OwnedBy    string            `json:"owned_by"`
+	Permission []Permission      `json:"permission"`
+	Root       string            `json:"root"`
+	Parent     string            `json:"parent"`
+	Metadata   map[string]string `json:"metadata"`
+}
+
+type Permission struct {
+	CreatedAt          int64       `json:"created"`
+	ID                 string      `json:"id"`
+	Object             string      `json:"object"`
+	AllowCreateEngine  bool        `json:"allow_create_engine"`
+	AllowSampling      bool        `json:"allow_sampling"`
+	AllowLogprobs      bool        `json:"allow_logprobs"`
+	AllowSearchIndices bool        `json:"allow_search_indices"`
+	AllowView          bool        `json:"allow_view"`
+	AllowFineTuning    bool        `json:"allow_fine_tuning"`
+	Organization       string      `json:"organization"`
+	Group              interface{} `json:"group"`
+	IsBlocking         bool        `json:"is_blocking"`
+}
+
 // ListModels will list all the available models.
-func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) ([]string, error) {
+func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) ([]Model, error) {
 	var o ListModelsOptions
 	for _, opt := range opts {
 		o.Providers = append(o.Providers, opt.Providers...)
@@ -314,7 +340,12 @@ func (g *GPTScript) ListModels(ctx context.Context, opts ...ListModelsOptions) (
 		return nil, err
 	}
 
-	return strings.Split(strings.TrimSpace(out), "\n"), nil
+	var models []Model
+	if err = json.Unmarshal([]byte(out), &models); err != nil {
+		return nil, fmt.Errorf("failed to parse models: %w", err)
+	}
+
+	return models, nil
 }
 
 func (g *GPTScript) Confirm(ctx context.Context, resp AuthResponse) error {
