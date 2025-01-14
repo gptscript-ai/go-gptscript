@@ -209,6 +209,14 @@ func (g *GPTScript) ReadFileInWorkspace(ctx context.Context, filePath string, op
 	return base64.StdEncoding.DecodeString(out)
 }
 
+type FileInfo struct {
+	WorkspaceID string
+	Name        string
+	Size        int64
+	ModTime     time.Time
+	MimeType    string
+}
+
 type StatFileInWorkspaceOptions struct {
 	WorkspaceID string
 }
@@ -247,10 +255,108 @@ func (g *GPTScript) StatFileInWorkspace(ctx context.Context, filePath string, op
 	return info, nil
 }
 
-type FileInfo struct {
+type RevisionInfo struct {
+	FileInfo
+	RevisionID string
+}
+
+type ListRevisionsForFileInWorkspaceOptions struct {
 	WorkspaceID string
-	Name        string
-	Size        int64
-	ModTime     time.Time
-	MimeType    string
+}
+
+func (g *GPTScript) ListRevisionsForFileInWorkspace(ctx context.Context, filePath string, opts ...ListRevisionsForFileInWorkspaceOptions) ([]RevisionInfo, error) {
+	var opt ListRevisionsForFileInWorkspaceOptions
+	for _, o := range opts {
+		if o.WorkspaceID != "" {
+			opt.WorkspaceID = o.WorkspaceID
+		}
+	}
+
+	if opt.WorkspaceID == "" {
+		opt.WorkspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
+	}
+
+	out, err := g.runBasicCommand(ctx, "workspaces/list-revisions", map[string]any{
+		"id":            opt.WorkspaceID,
+		"filePath":      filePath,
+		"workspaceTool": g.globalOpts.WorkspaceTool,
+		"env":           g.globalOpts.Env,
+	})
+	if err != nil {
+		if strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
+			return nil, newNotFoundInWorkspaceError(opt.WorkspaceID, filePath)
+		}
+		return nil, err
+	}
+
+	var info []RevisionInfo
+	err = json.Unmarshal([]byte(out), &info)
+	if err != nil {
+		return nil, err
+	}
+
+	return info, nil
+}
+
+type GetRevisionForFileInWorkspaceOptions struct {
+	WorkspaceID string
+}
+
+func (g *GPTScript) GetRevisionForFileInWorkspace(ctx context.Context, filePath, revisionID string, opts ...GetRevisionForFileInWorkspaceOptions) ([]byte, error) {
+	var opt GetRevisionForFileInWorkspaceOptions
+	for _, o := range opts {
+		if o.WorkspaceID != "" {
+			opt.WorkspaceID = o.WorkspaceID
+		}
+	}
+
+	if opt.WorkspaceID == "" {
+		opt.WorkspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
+	}
+
+	out, err := g.runBasicCommand(ctx, "workspaces/get-revision", map[string]any{
+		"id":            opt.WorkspaceID,
+		"filePath":      filePath,
+		"revisionID":    revisionID,
+		"workspaceTool": g.globalOpts.WorkspaceTool,
+		"env":           g.globalOpts.Env,
+	})
+	if err != nil {
+		if strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
+			return nil, newNotFoundInWorkspaceError(opt.WorkspaceID, filePath)
+		}
+		return nil, err
+	}
+
+	return base64.StdEncoding.DecodeString(out)
+}
+
+type DeleteRevisionForFileInWorkspaceOptions struct {
+	WorkspaceID string
+}
+
+func (g *GPTScript) DeleteRevisionForFileInWorkspace(ctx context.Context, filePath, revisionID string, opts ...DeleteRevisionForFileInWorkspaceOptions) error {
+	var opt DeleteRevisionForFileInWorkspaceOptions
+	for _, o := range opts {
+		if o.WorkspaceID != "" {
+			opt.WorkspaceID = o.WorkspaceID
+		}
+	}
+
+	if opt.WorkspaceID == "" {
+		opt.WorkspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
+	}
+
+	_, err := g.runBasicCommand(ctx, "workspaces/delete-revision", map[string]any{
+		"id":            opt.WorkspaceID,
+		"filePath":      filePath,
+		"revisionID":    revisionID,
+		"workspaceTool": g.globalOpts.WorkspaceTool,
+		"env":           g.globalOpts.Env,
+	})
+	if err != nil && strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
+		return newNotFoundInWorkspaceError(opt.WorkspaceID, fmt.Sprintf("revision %s for %s", revisionID, filePath))
+	}
+
+	return err
 }
