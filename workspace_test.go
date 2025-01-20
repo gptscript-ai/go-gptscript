@@ -27,6 +27,46 @@ func TestCreateAndDeleteWorkspace(t *testing.T) {
 	}
 }
 
+func TestCreateAndDeleteWorkspaceFromWorkspace(t *testing.T) {
+	id, err := g.CreateWorkspace(context.Background(), "directory")
+	if err != nil {
+		t.Fatalf("Error creating workspace: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "file.txt", []byte("hello world"), WriteFileInWorkspaceOptions{
+		WorkspaceID: id,
+	})
+	if err != nil {
+		t.Errorf("Error creating file: %v", err)
+	}
+
+	newID, err := g.CreateWorkspace(context.Background(), "directory", id)
+	if err != nil {
+		t.Errorf("Error creating workspace from workspace: %v", err)
+	}
+
+	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+		WorkspaceID: newID,
+	})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if !bytes.Equal(data, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", data)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), id)
+	if err != nil {
+		t.Errorf("Error deleting workspace: %v", err)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), newID)
+	if err != nil {
+		t.Errorf("Error deleting new workspace: %v", err)
+	}
+}
+
 func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 	id, err := g.CreateWorkspace(context.Background(), "directory")
 	if err != nil {
@@ -267,6 +307,138 @@ func TestCreateAndDeleteWorkspaceS3(t *testing.T) {
 	err = g.DeleteWorkspace(context.Background(), id)
 	if err != nil {
 		t.Errorf("Error deleting workspace: %v", err)
+	}
+}
+
+func TestCreateAndDeleteWorkspaceFromWorkspaceS3(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" || os.Getenv("WORKSPACE_PROVIDER_S3_BUCKET") == "" {
+		t.Skip("Skipping test because AWS credentials are not set")
+	}
+
+	id, err := g.CreateWorkspace(context.Background(), "s3")
+	if err != nil {
+		t.Fatalf("Error creating workspace: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "file.txt", []byte("hello world"), WriteFileInWorkspaceOptions{
+		WorkspaceID: id,
+	})
+	if err != nil {
+		t.Errorf("Error creating file: %v", err)
+	}
+
+	newID, err := g.CreateWorkspace(context.Background(), "s3", id)
+	if err != nil {
+		t.Errorf("Error creating workspace from workspace: %v", err)
+	}
+
+	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+		WorkspaceID: newID,
+	})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if !bytes.Equal(data, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", data)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), id)
+	if err != nil {
+		t.Errorf("Error deleting workspace: %v", err)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), newID)
+	if err != nil {
+		t.Errorf("Error deleting new workspace: %v", err)
+	}
+}
+
+func TestCreateAndDeleteDirectoryWorkspaceFromWorkspaceS3(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" || os.Getenv("WORKSPACE_PROVIDER_S3_BUCKET") == "" {
+		t.Skip("Skipping test because AWS credentials are not set")
+	}
+
+	id, err := g.CreateWorkspace(context.Background(), "s3")
+	if err != nil {
+		t.Fatalf("Error creating workspace: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "file.txt", []byte("hello world"), WriteFileInWorkspaceOptions{
+		WorkspaceID: id,
+	})
+	if err != nil {
+		t.Errorf("Error creating file: %v", err)
+	}
+
+	newID, err := g.CreateWorkspace(context.Background(), "directory", id)
+	if err != nil {
+		t.Errorf("Error creating workspace from workspace: %v", err)
+	}
+
+	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+		WorkspaceID: newID,
+	})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if !bytes.Equal(data, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", data)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), id)
+	if err != nil {
+		t.Errorf("Error deleting workspace: %v", err)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), newID)
+	if err != nil {
+		t.Errorf("Error deleting new workspace: %v", err)
+	}
+}
+
+func TestCreateAndDeleteS3WorkspaceFromWorkspaceDirectory(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" || os.Getenv("WORKSPACE_PROVIDER_S3_BUCKET") == "" {
+		t.Skip("Skipping test because AWS credentials are not set")
+	}
+
+	id, err := g.CreateWorkspace(context.Background(), "s3")
+	if err != nil {
+		t.Fatalf("Error creating workspace: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "file.txt", []byte("hello world"), WriteFileInWorkspaceOptions{
+		WorkspaceID: id,
+	})
+	if err != nil {
+		t.Errorf("Error creating file: %v", err)
+	}
+
+	newID, err := g.CreateWorkspace(context.Background(), "directory", id)
+	if err != nil {
+		t.Errorf("Error creating workspace from workspace: %v", err)
+	}
+
+	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+		WorkspaceID: newID,
+	})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if !bytes.Equal(data, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", data)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), id)
+	if err != nil {
+		t.Errorf("Error deleting workspace: %v", err)
+	}
+
+	err = g.DeleteWorkspace(context.Background(), newID)
+	if err != nil {
+		t.Errorf("Error deleting new workspace: %v", err)
 	}
 }
 
