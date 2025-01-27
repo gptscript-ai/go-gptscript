@@ -121,7 +121,8 @@ func (g *GPTScript) RemoveAll(ctx context.Context, opts ...RemoveAllOptions) err
 }
 
 type WriteFileInWorkspaceOptions struct {
-	WorkspaceID string
+	WorkspaceID    string
+	CreateRevision *bool
 }
 
 func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, contents []byte, opts ...WriteFileInWorkspaceOptions) error {
@@ -130,6 +131,9 @@ func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, c
 		if o.WorkspaceID != "" {
 			opt.WorkspaceID = o.WorkspaceID
 		}
+		if o.CreateRevision != nil {
+			opt.CreateRevision = o.CreateRevision
+		}
 	}
 
 	if opt.WorkspaceID == "" {
@@ -137,11 +141,12 @@ func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, c
 	}
 
 	_, err := g.runBasicCommand(ctx, "workspaces/write-file", map[string]any{
-		"id":            opt.WorkspaceID,
-		"contents":      base64.StdEncoding.EncodeToString(contents),
-		"filePath":      filePath,
-		"workspaceTool": g.globalOpts.WorkspaceTool,
-		"env":           g.globalOpts.Env,
+		"id":             opt.WorkspaceID,
+		"contents":       base64.StdEncoding.EncodeToString(contents),
+		"filePath":       filePath,
+		"createRevision": opt.CreateRevision,
+		"workspaceTool":  g.globalOpts.WorkspaceTool,
+		"env":            g.globalOpts.Env,
 	})
 
 	return err
