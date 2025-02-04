@@ -116,14 +116,26 @@ type InputContext struct {
 	Content string `json:"content,omitempty"`
 }
 
-type PromptFrame struct {
-	ID        string            `json:"id,omitempty"`
-	Type      EventType         `json:"type,omitempty"`
-	Time      time.Time         `json:"time,omitempty"`
+type Prompt struct {
 	Message   string            `json:"message,omitempty"`
-	Fields    []string          `json:"fields,omitempty"`
+	Fields    Fields            `json:"fields,omitempty"`
 	Sensitive bool              `json:"sensitive,omitempty"`
 	Metadata  map[string]string `json:"metadata,omitempty"`
+}
+
+type Field struct {
+	Name        string `json:"name,omitempty"`
+	Sensitive   *bool  `json:"sensitive,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+type Fields []Field
+
+type PromptFrame struct {
+	Prompt
+	ID   string    `json:"id,omitempty"`
+	Type EventType `json:"type,omitempty"`
+	Time time.Time `json:"time,omitempty"`
 }
 
 func (p *PromptFrame) String() string {

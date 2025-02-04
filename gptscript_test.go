@@ -1131,13 +1131,13 @@ func TestPrompt(t *testing.T) {
 		t.Fatalf("Unexpected number of fields: %d", len(promptFrame.Fields))
 	}
 
-	if promptFrame.Fields[0] != "first name" {
-		t.Errorf("Unexpected field: %s", promptFrame.Fields[0])
+	if promptFrame.Fields[0].Name != "first name" {
+		t.Errorf("Unexpected field: %s", promptFrame.Fields[0].Name)
 	}
 
 	if err = g.PromptResponse(context.Background(), PromptResponse{
 		ID:        promptFrame.ID,
-		Responses: map[string]string{promptFrame.Fields[0]: "Clicky"},
+		Responses: map[string]string{promptFrame.Fields[0].Name: "Clicky"},
 	}); err != nil {
 		t.Errorf("Error responding: %v", err)
 	}
@@ -1199,8 +1199,8 @@ func TestPromptWithMetadata(t *testing.T) {
 		t.Fatalf("Unexpected number of fields: %d", len(promptFrame.Fields))
 	}
 
-	if promptFrame.Fields[0] != "first name" {
-		t.Errorf("Unexpected field: %s", promptFrame.Fields[0])
+	if promptFrame.Fields[0].Name != "first name" {
+		t.Errorf("Unexpected field: %s", promptFrame.Fields[0].Name)
 	}
 
 	if promptFrame.Metadata["key"] != "value" {
@@ -1209,7 +1209,7 @@ func TestPromptWithMetadata(t *testing.T) {
 
 	if err = g.PromptResponse(context.Background(), PromptResponse{
 		ID:        promptFrame.ID,
-		Responses: map[string]string{promptFrame.Fields[0]: "Clicky"},
+		Responses: map[string]string{promptFrame.Fields[0].Name: "Clicky"},
 	}); err != nil {
 		t.Errorf("Error responding: %v", err)
 	}
