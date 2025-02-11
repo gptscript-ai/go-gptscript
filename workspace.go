@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
+
+var conflictErrParser = regexp.MustCompile(`^.+500 Internal Server Error: conflict: (.+)/([^/]+) \(latest revision: (-?\d+), current revision: (-?\d+)\)$`)
 
 type NotFoundInWorkspaceError struct {
 	id   string
@@ -21,6 +24,29 @@ func (e *NotFoundInWorkspaceError) Error() string {
 
 func newNotFoundInWorkspaceError(id, name string) *NotFoundInWorkspaceError {
 	return &NotFoundInWorkspaceError{id: id, name: name}
+}
+
+type ConflictInWorkspaceError struct {
+	ID              string
+	Name            string
+	LatestRevision  string
+	CurrentRevision string
+}
+
+func parsePossibleConflictInWorkspaceError(err error) error {
+	if err == nil {
+		return err
+	}
+
+	matches := conflictErrParser.FindStringSubmatch(err.Error())
+	if len(matches) != 5 {
+		return err
+	}
+	return &ConflictInWorkspaceError{ID: matches[1], Name: matches[2], LatestRevision: matches[3], CurrentRevision: matches[4]}
+}
+
+func (e *ConflictInWorkspaceError) Error() string {
+	return fmt.Sprintf("conflict: %s/%s (latest revision: %s, current revision: %s)", e.ID, e.Name, e.LatestRevision, e.CurrentRevision)
 }
 
 func (g *GPTScript) CreateWorkspace(ctx context.Context, providerType string, fromWorkspaces ...string) (string, error) {
@@ -123,6 +149,7 @@ func (g *GPTScript) RemoveAll(ctx context.Context, opts ...RemoveAllOptions) err
 type WriteFileInWorkspaceOptions struct {
 	WorkspaceID    string
 	CreateRevision *bool
+	LatestRevision string
 }
 
 func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, contents []byte, opts ...WriteFileInWorkspaceOptions) error {
@@ -133,6 +160,9 @@ func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, c
 		}
 		if o.CreateRevision != nil {
 			opt.CreateRevision = o.CreateRevision
+		}
+		if o.LatestRevision != "" {
+			opt.LatestRevision = o.LatestRevision
 		}
 	}
 
@@ -145,11 +175,12 @@ func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, c
 		"contents":       base64.StdEncoding.EncodeToString(contents),
 		"filePath":       filePath,
 		"createRevision": opt.CreateRevision,
+		"latestRevision": opt.LatestRevision,
 		"workspaceTool":  g.globalOpts.WorkspaceTool,
 		"env":            g.globalOpts.Env,
 	})
 
-	return err
+	return parsePossibleConflictInWorkspaceError(err)
 }
 
 type DeleteFileInWorkspaceOptions struct {
