@@ -307,6 +307,92 @@ func TestDisableCreateRevisionsForFileInWorkspace(t *testing.T) {
 	}
 }
 
+func TestConflictsForFileInWorkspace(t *testing.T) {
+	id, err := g.CreateWorkspace(context.Background(), "directory")
+	if err != nil {
+		t.Fatalf("Error creating workspace: %v", err)
+	}
+
+	t.Cleanup(func() {
+		err := g.DeleteWorkspace(context.Background(), id)
+		if err != nil {
+			t.Errorf("Error deleting workspace: %v", err)
+		}
+	})
+
+	ce := (*ConflictInWorkspaceError)(nil)
+	// Writing a new file with a non-zero latest revision should fail
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: "1"})
+	if err == nil || !errors.As(err, &ce) {
+		t.Errorf("Expected error writing file with non-zero latest revision: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test1"), WriteFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	revisions, err := g.ListRevisionsForFileInWorkspace(context.Background(), "test.txt", ListRevisionsForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if len(revisions) != 1 {
+		t.Errorf("Unexpected number of revisions: %d", len(revisions))
+	}
+
+	// Writing to the file with the latest revision should succeed
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test2"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	revisions, err = g.ListRevisionsForFileInWorkspace(context.Background(), "test.txt", ListRevisionsForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if len(revisions) != 2 {
+		t.Errorf("Unexpected number of revisions: %d", len(revisions))
+	}
+
+	// Writing to the file with the same revision should fail
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test3"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	if err == nil || !errors.As(err, &ce) {
+		t.Errorf("Expected error writing file with same revision: %v", err)
+	}
+
+	err = g.DeleteRevisionForFileInWorkspace(context.Background(), "test.txt", revisions[1].RevisionID, DeleteRevisionForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error deleting revision for file: %v", err)
+	}
+
+	revisions, err = g.ListRevisionsForFileInWorkspace(context.Background(), "test.txt", ListRevisionsForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if len(revisions) != 1 {
+		t.Errorf("Unexpected number of revisions: %d", len(revisions))
+	}
+
+	// Ensure we can write a new file after deleting the latest revision
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	err = g.DeleteFileInWorkspace(context.Background(), "test.txt", DeleteFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error deleting file: %v", err)
+	}
+}
+
 func TestLsComplexWorkspace(t *testing.T) {
 	id, err := g.CreateWorkspace(context.Background(), "directory")
 	if err != nil {
@@ -687,6 +773,96 @@ func TestRevisionsForFileInWorkspaceS3(t *testing.T) {
 
 	if len(revisions) != 0 {
 		t.Errorf("Unexpected number of revisions: %d", len(revisions))
+	}
+}
+
+func TestConflictsForFileInWorkspaceS3(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" || os.Getenv("WORKSPACE_PROVIDER_S3_BUCKET") == "" {
+		t.Skip("Skipping test because AWS credentials are not set")
+	}
+
+	id, err := g.CreateWorkspace(context.Background(), "s3")
+	if err != nil {
+		t.Fatalf("Error creating workspace: %v", err)
+	}
+
+	t.Cleanup(func() {
+		err := g.DeleteWorkspace(context.Background(), id)
+		if err != nil {
+			t.Errorf("Error deleting workspace: %v", err)
+		}
+	})
+
+	ce := (*ConflictInWorkspaceError)(nil)
+	// Writing a new file with a non-zero latest revision should fail
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: "1"})
+	if err == nil || !errors.As(err, &ce) {
+		t.Errorf("Expected error writing file with non-zero latest revision: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test1"), WriteFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	revisions, err := g.ListRevisionsForFileInWorkspace(context.Background(), "test.txt", ListRevisionsForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if len(revisions) != 1 {
+		t.Errorf("Unexpected number of revisions: %d", len(revisions))
+	}
+
+	// Writing to the file with the latest revision should succeed
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test2"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	revisions, err = g.ListRevisionsForFileInWorkspace(context.Background(), "test.txt", ListRevisionsForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if len(revisions) != 2 {
+		t.Errorf("Unexpected number of revisions: %d", len(revisions))
+	}
+
+	// Writing to the file with the same revision should fail
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test3"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	if err == nil || !errors.As(err, &ce) {
+		t.Errorf("Expected error writing file with same revision: %v", err)
+	}
+
+	err = g.DeleteRevisionForFileInWorkspace(context.Background(), "test.txt", revisions[1].RevisionID, DeleteRevisionForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error deleting revision for file: %v", err)
+	}
+
+	revisions, err = g.ListRevisionsForFileInWorkspace(context.Background(), "test.txt", ListRevisionsForFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if len(revisions) != 1 {
+		t.Errorf("Unexpected number of revisions: %d", len(revisions))
+	}
+
+	// Ensure we can write a new file after deleting the latest revision
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	if err != nil {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
+	err = g.DeleteFileInWorkspace(context.Background(), "test.txt", DeleteFileInWorkspaceOptions{WorkspaceID: id})
+	if err != nil {
+		t.Errorf("Error deleting file: %v", err)
 	}
 }
 
