@@ -414,7 +414,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 			}
 		}
 
-		if err != nil && !errors.Is(err, io.EOF) {
+		if !errors.Is(err, io.EOF) {
 			slog.Debug("failed to read events from response", "error", err)
 			r.err = fmt.Errorf("failed to read events: %w", err)
 		}
