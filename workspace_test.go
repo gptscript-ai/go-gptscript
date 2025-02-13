@@ -33,6 +33,13 @@ func TestCreateAndDeleteWorkspaceFromWorkspace(t *testing.T) {
 		t.Fatalf("Error creating workspace: %v", err)
 	}
 
+	t.Cleanup(func() {
+		err = g.DeleteWorkspace(context.Background(), id)
+		if err != nil {
+			t.Errorf("Error deleting workspace: %v", err)
+		}
+	})
+
 	err = g.WriteFileInWorkspace(context.Background(), "file.txt", []byte("hello world"), WriteFileInWorkspaceOptions{
 		WorkspaceID: id,
 	})
@@ -45,25 +52,20 @@ func TestCreateAndDeleteWorkspaceFromWorkspace(t *testing.T) {
 		t.Errorf("Error creating workspace from workspace: %v", err)
 	}
 
-	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+	content, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
 		WorkspaceID: newID,
 	})
 	if err != nil {
-		t.Errorf("Error reading file: %v", err)
+		t.Fatalf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(data, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", data)
+	if !bytes.Equal(content.Content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content.Content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
 	if err != nil {
 		t.Errorf("Error deleting workspace: %v", err)
-	}
-
-	err = g.DeleteWorkspace(context.Background(), newID)
-	if err != nil {
-		t.Errorf("Error deleting new workspace: %v", err)
 	}
 }
 
@@ -90,8 +92,26 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content, []byte("test")) {
-		t.Errorf("Unexpected content: %s", content)
+	if !bytes.Equal(content.Content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", content.Content)
+	}
+
+	if content.RevisionID != "" {
+		t.Errorf("Unexpected file revision ID when not requesting it: %s", content.RevisionID)
+	}
+
+	// Read the file and request the revision ID
+	content, err = g.ReadFileInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id, WithLatestRevisionID: true})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if !bytes.Equal(content.Content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", content.Content)
+	}
+
+	if content.RevisionID == "" {
+		t.Errorf("Expected file revision ID when requesting it: %s", content.RevisionID)
 	}
 
 	// Stat the file to ensure it exists
@@ -118,6 +138,24 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 
 	if fileInfo.MimeType != "text/plain" {
 		t.Errorf("Unexpected file mime type: %s", fileInfo.MimeType)
+	}
+
+	if fileInfo.RevisionID != "" {
+		t.Errorf("Unexpected file revision ID when not requesting it: %s", fileInfo.RevisionID)
+	}
+
+	// Stat file and request the revision ID
+	fileInfo, err = g.StatFileInWorkspace(context.Background(), "test.txt", StatFileInWorkspaceOptions{WorkspaceID: id, WithLatestRevisionID: true})
+	if err != nil {
+		t.Errorf("Error statting file: %v", err)
+	}
+
+	if fileInfo.WorkspaceID != id {
+		t.Errorf("Unexpected file workspace ID: %v", fileInfo.WorkspaceID)
+	}
+
+	if fileInfo.RevisionID == "" {
+		t.Errorf("Expected file revision ID when requesting it: %s", fileInfo.RevisionID)
 	}
 
 	// Ensure we get the error we expect when trying to read a non-existent file
@@ -322,7 +360,7 @@ func TestConflictsForFileInWorkspace(t *testing.T) {
 
 	ce := (*ConflictInWorkspaceError)(nil)
 	// Writing a new file with a non-zero latest revision should fail
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: "1"})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: "1"})
 	if err == nil || !errors.As(err, &ce) {
 		t.Errorf("Expected error writing file with non-zero latest revision: %v", err)
 	}
@@ -347,7 +385,7 @@ func TestConflictsForFileInWorkspace(t *testing.T) {
 	}
 
 	// Writing to the file with the latest revision should succeed
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test2"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test2"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: revisions[0].RevisionID})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
@@ -362,12 +400,13 @@ func TestConflictsForFileInWorkspace(t *testing.T) {
 	}
 
 	// Writing to the file with the same revision should fail
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test3"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test3"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: revisions[0].RevisionID})
 	if err == nil || !errors.As(err, &ce) {
 		t.Errorf("Expected error writing file with same revision: %v", err)
 	}
 
-	err = g.DeleteRevisionForFileInWorkspace(context.Background(), "test.txt", revisions[1].RevisionID, DeleteRevisionForFileInWorkspaceOptions{WorkspaceID: id})
+	latestRevisionID := revisions[1].RevisionID
+	err = g.DeleteRevisionForFileInWorkspace(context.Background(), "test.txt", latestRevisionID, DeleteRevisionForFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error deleting revision for file: %v", err)
 	}
@@ -381,10 +420,16 @@ func TestConflictsForFileInWorkspace(t *testing.T) {
 		t.Errorf("Unexpected number of revisions: %d", len(revisions))
 	}
 
+	// Ensure we cannot write a new file with the zero-th revision ID
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: revisions[0].RevisionID})
+	if err == nil || !errors.As(err, &ce) {
+		t.Errorf("Unexpected error writing to file: %v", err)
+	}
+
 	// Ensure we can write a new file after deleting the latest revision
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: latestRevisionID})
 	if err != nil {
-		t.Fatalf("Error creating file: %v", err)
+		t.Errorf("Error writing file: %v", err)
 	}
 
 	err = g.DeleteFileInWorkspace(context.Background(), "test.txt", DeleteFileInWorkspaceOptions{WorkspaceID: id})
@@ -501,15 +546,15 @@ func TestCreateAndDeleteWorkspaceFromWorkspaceS3(t *testing.T) {
 		t.Errorf("Error creating workspace from workspace: %v", err)
 	}
 
-	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+	content, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
 		WorkspaceID: newID,
 	})
 	if err != nil {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(data, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", data)
+	if !bytes.Equal(content.Content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content.Content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
@@ -545,15 +590,15 @@ func TestCreateAndDeleteDirectoryWorkspaceFromWorkspaceS3(t *testing.T) {
 		t.Errorf("Error creating workspace from workspace: %v", err)
 	}
 
-	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+	content, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
 		WorkspaceID: newID,
 	})
 	if err != nil {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(data, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", data)
+	if !bytes.Equal(content.Content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content.Content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
@@ -577,6 +622,13 @@ func TestCreateAndDeleteS3WorkspaceFromWorkspaceDirectory(t *testing.T) {
 		t.Fatalf("Error creating workspace: %v", err)
 	}
 
+	t.Cleanup(func() {
+		err = g.DeleteWorkspace(context.Background(), id)
+		if err != nil {
+			t.Errorf("Error deleting workspace: %v", err)
+		}
+	})
+
 	err = g.WriteFileInWorkspace(context.Background(), "file.txt", []byte("hello world"), WriteFileInWorkspaceOptions{
 		WorkspaceID: id,
 	})
@@ -589,25 +641,20 @@ func TestCreateAndDeleteS3WorkspaceFromWorkspaceDirectory(t *testing.T) {
 		t.Errorf("Error creating workspace from workspace: %v", err)
 	}
 
-	data, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
+	content, err := g.ReadFileInWorkspace(context.Background(), "file.txt", ReadFileInWorkspaceOptions{
 		WorkspaceID: newID,
 	})
 	if err != nil {
-		t.Errorf("Error reading file: %v", err)
+		t.Fatalf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(data, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", data)
+	if !bytes.Equal(content.Content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content.Content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
 	if err != nil {
 		t.Errorf("Error deleting workspace: %v", err)
-	}
-
-	err = g.DeleteWorkspace(context.Background(), newID)
-	if err != nil {
-		t.Errorf("Error deleting new workspace: %v", err)
 	}
 }
 
@@ -638,8 +685,26 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content, []byte("test")) {
-		t.Errorf("Unexpected content: %s", content)
+	if !bytes.Equal(content.Content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", content.Content)
+	}
+
+	if content.RevisionID != "" {
+		t.Errorf("Unexpected file revision ID when not requesting it: %s", content.RevisionID)
+	}
+
+	// Read the file and request the revision ID
+	content, err = g.ReadFileInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id, WithLatestRevisionID: true})
+	if err != nil {
+		t.Errorf("Error reading file: %v", err)
+	}
+
+	if !bytes.Equal(content.Content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", content.Content)
+	}
+
+	if content.RevisionID == "" {
+		t.Errorf("Expected file revision ID when requesting it: %s", content.RevisionID)
 	}
 
 	// Stat the file to ensure it exists
@@ -666,6 +731,24 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 
 	if fileInfo.MimeType != "text/plain" {
 		t.Errorf("Unexpected file mime type: %s", fileInfo.MimeType)
+	}
+
+	if fileInfo.RevisionID != "" {
+		t.Errorf("Unexpected file revision ID when not requesting it: %s", fileInfo.RevisionID)
+	}
+
+	// Stat file and request the revision ID
+	fileInfo, err = g.StatFileInWorkspace(context.Background(), "test.txt", StatFileInWorkspaceOptions{WorkspaceID: id, WithLatestRevisionID: true})
+	if err != nil {
+		t.Errorf("Error statting file: %v", err)
+	}
+
+	if fileInfo.WorkspaceID != id {
+		t.Errorf("Unexpected file workspace ID: %v", fileInfo.WorkspaceID)
+	}
+
+	if fileInfo.RevisionID == "" {
+		t.Errorf("Expected file revision ID when requesting it: %s", fileInfo.RevisionID)
 	}
 
 	// Ensure we get the error we expect when trying to read a non-existent file
@@ -795,7 +878,7 @@ func TestConflictsForFileInWorkspaceS3(t *testing.T) {
 
 	ce := (*ConflictInWorkspaceError)(nil)
 	// Writing a new file with a non-zero latest revision should fail
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: "1"})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test0"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: "1"})
 	if err == nil || !errors.As(err, &ce) {
 		t.Errorf("Expected error writing file with non-zero latest revision: %v", err)
 	}
@@ -820,7 +903,7 @@ func TestConflictsForFileInWorkspaceS3(t *testing.T) {
 	}
 
 	// Writing to the file with the latest revision should succeed
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test2"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test2"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: revisions[0].RevisionID})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}
@@ -835,12 +918,13 @@ func TestConflictsForFileInWorkspaceS3(t *testing.T) {
 	}
 
 	// Writing to the file with the same revision should fail
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test3"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test3"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: revisions[0].RevisionID})
 	if err == nil || !errors.As(err, &ce) {
 		t.Errorf("Expected error writing file with same revision: %v", err)
 	}
 
-	err = g.DeleteRevisionForFileInWorkspace(context.Background(), "test.txt", revisions[1].RevisionID, DeleteRevisionForFileInWorkspaceOptions{WorkspaceID: id})
+	latestRevisionID := revisions[1].RevisionID
+	err = g.DeleteRevisionForFileInWorkspace(context.Background(), "test.txt", latestRevisionID, DeleteRevisionForFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error deleting revision for file: %v", err)
 	}
@@ -854,8 +938,14 @@ func TestConflictsForFileInWorkspaceS3(t *testing.T) {
 		t.Errorf("Unexpected number of revisions: %d", len(revisions))
 	}
 
+	// Ensure we cannot write a new file with the zero-th revision ID
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: revisions[0].RevisionID})
+	if err == nil || !errors.As(err, &ce) {
+		t.Fatalf("Error creating file: %v", err)
+	}
+
 	// Ensure we can write a new file after deleting the latest revision
-	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevision: revisions[0].RevisionID})
+	err = g.WriteFileInWorkspace(context.Background(), "test.txt", []byte("test4"), WriteFileInWorkspaceOptions{WorkspaceID: id, LatestRevisionID: latestRevisionID})
 	if err != nil {
 		t.Fatalf("Error creating file: %v", err)
 	}

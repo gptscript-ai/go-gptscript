@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		panic(fmt.Sprintf("error creating gptscript: %s", err))
 	}
 
-	g, err = NewGPTScript(GlobalOptions{OpenAIAPIKey: os.Getenv("OPENAI_API_KEY")})
+	g, err = NewGPTScript(GlobalOptions{OpenAIAPIKey: os.Getenv("OPENAI_API_KEY"), WorkspaceTool: "/Users/thedadams/code/workspace-provider"})
 	if err != nil {
 		gFirst.Close()
 		panic(fmt.Sprintf("error creating gptscript: %s", err))
