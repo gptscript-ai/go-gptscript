@@ -59,8 +59,8 @@ func TestCreateAndDeleteWorkspaceFromWorkspace(t *testing.T) {
 		t.Fatalf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", content.Content)
+	if !bytes.Equal(content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
@@ -92,26 +92,22 @@ func TestWriteReadAndDeleteFileFromWorkspace(t *testing.T) {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("test")) {
-		t.Errorf("Unexpected content: %s", content.Content)
-	}
-
-	if content.RevisionID != "" {
-		t.Errorf("Unexpected file revision ID when not requesting it: %s", content.RevisionID)
+	if !bytes.Equal(content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", content)
 	}
 
 	// Read the file and request the revision ID
-	content, err = g.ReadFileInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id, WithLatestRevisionID: true})
+	contentWithRevision, err := g.ReadFileWithRevisionInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("test")) {
-		t.Errorf("Unexpected content: %s", content.Content)
+	if !bytes.Equal(contentWithRevision.Content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", contentWithRevision.Content)
 	}
 
-	if content.RevisionID == "" {
-		t.Errorf("Expected file revision ID when requesting it: %s", content.RevisionID)
+	if contentWithRevision.RevisionID == "" {
+		t.Errorf("Expected file revision ID when requesting it: %s", contentWithRevision.RevisionID)
 	}
 
 	// Stat the file to ensure it exists
@@ -553,8 +549,8 @@ func TestCreateAndDeleteWorkspaceFromWorkspaceS3(t *testing.T) {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", content.Content)
+	if !bytes.Equal(content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
@@ -597,8 +593,8 @@ func TestCreateAndDeleteDirectoryWorkspaceFromWorkspaceS3(t *testing.T) {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", content.Content)
+	if !bytes.Equal(content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
@@ -648,8 +644,8 @@ func TestCreateAndDeleteS3WorkspaceFromWorkspaceDirectory(t *testing.T) {
 		t.Fatalf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("hello world")) {
-		t.Errorf("Unexpected content: %s", content.Content)
+	if !bytes.Equal(content, []byte("hello world")) {
+		t.Errorf("Unexpected content: %s", content)
 	}
 
 	err = g.DeleteWorkspace(context.Background(), id)
@@ -685,26 +681,22 @@ func TestWriteReadAndDeleteFileFromWorkspaceS3(t *testing.T) {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("test")) {
-		t.Errorf("Unexpected content: %s", content.Content)
-	}
-
-	if content.RevisionID != "" {
-		t.Errorf("Unexpected file revision ID when not requesting it: %s", content.RevisionID)
+	if !bytes.Equal(content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", content)
 	}
 
 	// Read the file and request the revision ID
-	content, err = g.ReadFileInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id, WithLatestRevisionID: true})
+	contentWithRevision, err := g.ReadFileWithRevisionInWorkspace(context.Background(), "test.txt", ReadFileInWorkspaceOptions{WorkspaceID: id})
 	if err != nil {
 		t.Errorf("Error reading file: %v", err)
 	}
 
-	if !bytes.Equal(content.Content, []byte("test")) {
-		t.Errorf("Unexpected content: %s", content.Content)
+	if !bytes.Equal(contentWithRevision.Content, []byte("test")) {
+		t.Errorf("Unexpected content: %s", contentWithRevision.Content)
 	}
 
-	if content.RevisionID == "" {
-		t.Errorf("Expected file revision ID when requesting it: %s", content.RevisionID)
+	if contentWithRevision.RevisionID == "" {
+		t.Errorf("Expected file revision ID when requesting it: %s", contentWithRevision.RevisionID)
 	}
 
 	// Stat the file to ensure it exists
