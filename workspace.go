@@ -147,9 +147,9 @@ func (g *GPTScript) RemoveAll(ctx context.Context, opts ...RemoveAllOptions) err
 }
 
 type WriteFileInWorkspaceOptions struct {
-	WorkspaceID    string
-	CreateRevision *bool
-	LatestRevision string
+	WorkspaceID      string
+	CreateRevision   *bool
+	LatestRevisionID string
 }
 
 func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, contents []byte, opts ...WriteFileInWorkspaceOptions) error {
@@ -161,8 +161,8 @@ func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, c
 		if o.CreateRevision != nil {
 			opt.CreateRevision = o.CreateRevision
 		}
-		if o.LatestRevision != "" {
-			opt.LatestRevision = o.LatestRevision
+		if o.LatestRevisionID != "" {
+			opt.LatestRevisionID = o.LatestRevisionID
 		}
 	}
 
@@ -171,13 +171,13 @@ func (g *GPTScript) WriteFileInWorkspace(ctx context.Context, filePath string, c
 	}
 
 	_, err := g.runBasicCommand(ctx, "workspaces/write-file", map[string]any{
-		"id":             opt.WorkspaceID,
-		"contents":       base64.StdEncoding.EncodeToString(contents),
-		"filePath":       filePath,
-		"createRevision": opt.CreateRevision,
-		"latestRevision": opt.LatestRevision,
-		"workspaceTool":  g.globalOpts.WorkspaceTool,
-		"env":            g.globalOpts.Env,
+		"id":               opt.WorkspaceID,
+		"contents":         base64.StdEncoding.EncodeToString(contents),
+		"filePath":         filePath,
+		"createRevision":   opt.CreateRevision,
+		"latestRevisionID": opt.LatestRevisionID,
+		"workspaceTool":    g.globalOpts.WorkspaceTool,
+		"env":              g.globalOpts.Env,
 	})
 
 	return parsePossibleConflictInWorkspaceError(err)
@@ -245,20 +245,13 @@ func (g *GPTScript) ReadFileInWorkspace(ctx context.Context, filePath string, op
 	return base64.StdEncoding.DecodeString(out)
 }
 
-type FileInfo struct {
-	WorkspaceID string
-	Name        string
-	Size        int64
-	ModTime     time.Time
-	MimeType    string
+type ReadFileWithRevisionInWorkspaceResponse struct {
+	Content    []byte `json:"content"`
+	RevisionID string `json:"revisionID"`
 }
 
-type StatFileInWorkspaceOptions struct {
-	WorkspaceID string
-}
-
-func (g *GPTScript) StatFileInWorkspace(ctx context.Context, filePath string, opts ...StatFileInWorkspaceOptions) (FileInfo, error) {
-	var opt StatFileInWorkspaceOptions
+func (g *GPTScript) ReadFileWithRevisionInWorkspace(ctx context.Context, filePath string, opts ...ReadFileInWorkspaceOptions) (*ReadFileWithRevisionInWorkspaceResponse, error) {
+	var opt ReadFileInWorkspaceOptions
 	for _, o := range opts {
 		if o.WorkspaceID != "" {
 			opt.WorkspaceID = o.WorkspaceID
@@ -269,11 +262,61 @@ func (g *GPTScript) StatFileInWorkspace(ctx context.Context, filePath string, op
 		opt.WorkspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
 	}
 
-	out, err := g.runBasicCommand(ctx, "workspaces/stat-file", map[string]any{
+	out, err := g.runBasicCommand(ctx, "workspaces/read-file-with-revision", map[string]any{
 		"id":            opt.WorkspaceID,
 		"filePath":      filePath,
 		"workspaceTool": g.globalOpts.WorkspaceTool,
 		"env":           g.globalOpts.Env,
+	})
+	if err != nil {
+		if strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
+			return nil, newNotFoundInWorkspaceError(opt.WorkspaceID, filePath)
+		}
+		return nil, err
+	}
+
+	var resp ReadFileWithRevisionInWorkspaceResponse
+	err = json.Unmarshal([]byte(out), &resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
+}
+
+type FileInfo struct {
+	WorkspaceID string
+	Name        string
+	Size        int64
+	ModTime     time.Time
+	MimeType    string
+	RevisionID  string
+}
+
+type StatFileInWorkspaceOptions struct {
+	WorkspaceID          string
+	WithLatestRevisionID bool
+}
+
+func (g *GPTScript) StatFileInWorkspace(ctx context.Context, filePath string, opts ...StatFileInWorkspaceOptions) (FileInfo, error) {
+	var opt StatFileInWorkspaceOptions
+	for _, o := range opts {
+		if o.WorkspaceID != "" {
+			opt.WorkspaceID = o.WorkspaceID
+		}
+		opt.WithLatestRevisionID = opt.WithLatestRevisionID || o.WithLatestRevisionID
+	}
+
+	if opt.WorkspaceID == "" {
+		opt.WorkspaceID = os.Getenv("GPTSCRIPT_WORKSPACE_ID")
+	}
+
+	out, err := g.runBasicCommand(ctx, "workspaces/stat-file", map[string]any{
+		"id":                   opt.WorkspaceID,
+		"filePath":             filePath,
+		"withLatestRevisionID": opt.WithLatestRevisionID,
+		"workspaceTool":        g.globalOpts.WorkspaceTool,
+		"env":                  g.globalOpts.Env,
 	})
 	if err != nil {
 		if strings.HasSuffix(err.Error(), fmt.Sprintf("not found: %s/%s", opt.WorkspaceID, filePath)) {
@@ -291,16 +334,11 @@ func (g *GPTScript) StatFileInWorkspace(ctx context.Context, filePath string, op
 	return info, nil
 }
 
-type RevisionInfo struct {
-	FileInfo
-	RevisionID string
-}
-
 type ListRevisionsForFileInWorkspaceOptions struct {
 	WorkspaceID string
 }
 
-func (g *GPTScript) ListRevisionsForFileInWorkspace(ctx context.Context, filePath string, opts ...ListRevisionsForFileInWorkspaceOptions) ([]RevisionInfo, error) {
+func (g *GPTScript) ListRevisionsForFileInWorkspace(ctx context.Context, filePath string, opts ...ListRevisionsForFileInWorkspaceOptions) ([]FileInfo, error) {
 	var opt ListRevisionsForFileInWorkspaceOptions
 	for _, o := range opts {
 		if o.WorkspaceID != "" {
@@ -325,7 +363,7 @@ func (g *GPTScript) ListRevisionsForFileInWorkspace(ctx context.Context, filePat
 		return nil, err
 	}
 
-	var info []RevisionInfo
+	var info []FileInfo
 	err = json.Unmarshal([]byte(out), &info)
 	if err != nil {
 		return nil, err
