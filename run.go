@@ -37,6 +37,7 @@ type Run struct {
 	basicCommand                      bool
 
 	program        *Program
+	id             string
 	callsLock      sync.RWMutex
 	calls          CallFrames
 	rawOutput      map[string]any
@@ -400,6 +401,7 @@ func (r *Run) request(ctx context.Context, payload any) (err error) {
 						if event.Run.Type == EventTypeRunStart {
 							r.callsLock.Lock()
 							r.program = &event.Run.Program
+							r.id = event.Run.ID
 							r.callsLock.Unlock()
 						} else if event.Run.Type == EventTypeRunFinish && event.Run.Error != "" {
 							r.state = Error

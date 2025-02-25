@@ -170,6 +170,11 @@ func (g *GPTScript) Run(ctx context.Context, toolPath string, opts Options) (*Ru
 	}).NextChat(ctx, opts.Input)
 }
 
+func (g *GPTScript) AbortRun(ctx context.Context, run *Run) error {
+	_, err := g.runBasicCommand(ctx, "abort/"+run.id, (map[string]any)(nil))
+	return err
+}
+
 type ParseOptions struct {
 	DisableCache bool
 }
