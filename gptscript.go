@@ -400,6 +400,11 @@ func (g *GPTScript) CreateCredential(ctx context.Context, cred Credential) error
 	return err
 }
 
+func (g *GPTScript) RecreateAllCredentials(ctx context.Context) error {
+	_, err := g.runBasicCommand(ctx, "credentials/recreate-all", struct{}{})
+	return err
+}
+
 func (g *GPTScript) RevealCredential(ctx context.Context, credCtxs []string, name string) (Credential, error) {
 	out, err := g.runBasicCommand(ctx, "credentials/reveal", CredentialRequest{
 		Context: credCtxs,
