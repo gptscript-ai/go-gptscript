@@ -160,7 +160,7 @@ func TestCancelRun(t *testing.T) {
 }
 
 func TestAbortChatCompletionRun(t *testing.T) {
-	tool := ToolDef{Instructions: "What is the capital of the united states?"}
+	tool := ToolDef{Instructions: "Generate a real long essay about the meaning of life."}
 
 	run, err := g.Evaluate(context.Background(), Options{DisableCache: true, IncludeEvents: true}, tool)
 	if err != nil {
@@ -1401,6 +1401,53 @@ func TestPromptWithoutPromptAllowed(t *testing.T) {
 
 	if run.State() != Error {
 		t.Errorf("Unexpected state: %v", run.State())
+	}
+}
+
+func TestPromptWithOptions(t *testing.T) {
+	run, err := g.Run(context.Background(), "sys.prompt", Options{IncludeEvents: true, Prompt: true, Input: `{"fields":[{"name":"Authentication Method","description":"The authentication token for the user","options":["API Key","OAuth"]}]}`})
+	if err != nil {
+		t.Errorf("Error executing tool: %v", err)
+	}
+
+	// Wait for the prompt event
+	var promptFrame *PromptFrame
+	for e := range run.Events() {
+		if e.Prompt != nil {
+			if e.Prompt.Type == EventTypePrompt {
+				promptFrame = e.Prompt
+				break
+			}
+		}
+	}
+
+	if promptFrame == nil {
+		t.Fatalf("No prompt call event")
+		return
+	}
+
+	if len(promptFrame.Fields) != 1 {
+		t.Fatalf("Unexpected number of fields: %d", len(promptFrame.Fields))
+	}
+
+	if promptFrame.Fields[0].Name != "Authentication Method" {
+		t.Errorf("Unexpected field: %s", promptFrame.Fields[0].Name)
+	}
+
+	if promptFrame.Fields[0].Description != "The authentication token for the user" {
+		t.Errorf("Unexpected description: %s", promptFrame.Fields[0].Description)
+	}
+
+	if len(promptFrame.Fields[0].Options) != 2 {
+		t.Fatalf("Unexpected number of options: %d", len(promptFrame.Fields[0].Options))
+	}
+
+	if promptFrame.Fields[0].Options[0] != "API Key" {
+		t.Errorf("Unexpected option: %s", promptFrame.Fields[0].Options[0])
+	}
+
+	if promptFrame.Fields[0].Options[1] != "OAuth" {
+		t.Errorf("Unexpected option: %s", promptFrame.Fields[0].Options[1])
 	}
 }
 
