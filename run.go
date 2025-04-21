@@ -118,6 +118,21 @@ func (r *Run) ParentCallFrame() (CallFrame, bool) {
 	return r.calls.ParentCallFrame(), true
 }
 
+// Usage returns all the usage for this run.
+func (r *Run) Usage() Usage {
+	var u Usage
+	r.callsLock.RLock()
+	defer r.callsLock.RUnlock()
+
+	for _, c := range r.calls {
+		u.CompletionTokens += c.Usage.CompletionTokens
+		u.PromptTokens += c.Usage.PromptTokens
+		u.TotalTokens += c.Usage.TotalTokens
+	}
+
+	return u
+}
+
 // ErrorOutput returns the stderr output of the gptscript.
 // Should only be called after Bytes or Text has returned an error.
 func (r *Run) ErrorOutput() string {
