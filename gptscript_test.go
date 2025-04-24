@@ -1716,6 +1716,7 @@ func TestCredentials(t *testing.T) {
 		Type:         CredentialTypeTool,
 		Env:          map[string]string{"ENV": "testing"},
 		RefreshToken: "my-refresh-token",
+		CheckParam:   "my-check-param",
 	})
 	require.NoError(t, err)
 
@@ -1732,6 +1733,7 @@ func TestCredentials(t *testing.T) {
 	require.Contains(t, cred.Env, "ENV")
 	require.Equal(t, cred.Env["ENV"], "testing")
 	require.Equal(t, cred.RefreshToken, "my-refresh-token")
+	require.Equal(t, cred.CheckParam, "my-check-param")
 
 	// Delete
 	err = g.DeleteCredential(context.Background(), "testing", name)
