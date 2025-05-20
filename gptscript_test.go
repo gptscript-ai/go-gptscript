@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
+	humav2 "github.com/danielgtaylor/huma/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -768,14 +768,12 @@ func TestFmt(t *testing.T) {
 					ToolDef: ToolDef{
 						Name:         "echo",
 						Instructions: "#!/bin/bash\necho hello there",
-						Arguments: &openapi3.Schema{
-							Type: &openapi3.Types{"object"},
-							Properties: map[string]*openapi3.SchemaRef{
+						Arguments: &humav2.Schema{
+							Type: humav2.TypeObject,
+							Properties: map[string]*humav2.Schema{
 								"input": {
-									Value: &openapi3.Schema{
-										Description: "The string input to echo",
-										Type:        &openapi3.Types{"string"},
-									},
+									Description: "The string input to echo",
+									Type:        humav2.TypeString,
 								},
 							},
 						},
@@ -829,14 +827,12 @@ func TestFmtWithTextNode(t *testing.T) {
 					ToolDef: ToolDef{
 						Instructions: "#!/bin/bash\necho hello there",
 						Name:         "echo",
-						Arguments: &openapi3.Schema{
-							Type: &openapi3.Types{"object"},
-							Properties: map[string]*openapi3.SchemaRef{
+						Arguments: &humav2.Schema{
+							Type: humav2.TypeObject,
+							Properties: map[string]*humav2.Schema{
 								"input": {
-									Value: &openapi3.Schema{
-										Description: "The string input to echo",
-										Type:        &openapi3.Types{"string"},
-									},
+									Description: "The string input to echo",
+									Type:        humav2.TypeString,
 								},
 							},
 						},
