@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/getkin/kin-openapi/openapi3"
+	humav2 "github.com/danielgtaylor/huma/v2"
 )
 
 // ToolDef struct represents a tool with various configurations.
@@ -19,7 +19,7 @@ type ToolDef struct {
 	Temperature         *float32          `json:"temperature,omitempty"`
 	Cache               *bool             `json:"cache,omitempty"`
 	InternalPrompt      *bool             `json:"internalPrompt"`
-	Arguments           *openapi3.Schema  `json:"arguments,omitempty"`
+	Arguments           *humav2.Schema    `json:"arguments,omitempty"`
 	Tools               []string          `json:"tools,omitempty"`
 	GlobalTools         []string          `json:"globalTools,omitempty"`
 	GlobalModelName     string            `json:"globalModelName,omitempty"`
@@ -52,18 +52,16 @@ func ToolDefsToNodes(tools []ToolDef) []Node {
 	return nodes
 }
 
-func ObjectSchema(kv ...string) *openapi3.Schema {
-	s := &openapi3.Schema{
-		Type:       &openapi3.Types{"object"},
-		Properties: openapi3.Schemas{},
+func ObjectSchema(kv ...string) *humav2.Schema {
+	s := &humav2.Schema{
+		Type:       humav2.TypeObject,
+		Properties: make(map[string]*humav2.Schema, len(kv)/2),
 	}
 	for i, v := range kv {
 		if i%2 == 1 {
-			s.Properties[kv[i-1]] = &openapi3.SchemaRef{
-				Value: &openapi3.Schema{
-					Description: v,
-					Type:        &openapi3.Types{"string"},
-				},
+			s.Properties[kv[i-1]] = &humav2.Schema{
+				Description: v,
+				Type:        humav2.TypeString,
 			}
 		}
 	}
