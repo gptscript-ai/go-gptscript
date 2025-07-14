@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	humav2 "github.com/danielgtaylor/huma/v2"
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -768,12 +768,12 @@ func TestFmt(t *testing.T) {
 					ToolDef: ToolDef{
 						Name:         "echo",
 						Instructions: "#!/bin/bash\necho hello there",
-						Arguments: &humav2.Schema{
-							Type: humav2.TypeObject,
-							Properties: map[string]*humav2.Schema{
+						Arguments: &jsonschema.Schema{
+							Type: "object",
+							Properties: map[string]*jsonschema.Schema{
 								"input": {
 									Description: "The string input to echo",
-									Type:        humav2.TypeString,
+									Type:        "string",
 								},
 							},
 						},
@@ -827,12 +827,12 @@ func TestFmtWithTextNode(t *testing.T) {
 					ToolDef: ToolDef{
 						Instructions: "#!/bin/bash\necho hello there",
 						Name:         "echo",
-						Arguments: &humav2.Schema{
-							Type: humav2.TypeObject,
-							Properties: map[string]*humav2.Schema{
+						Arguments: &jsonschema.Schema{
+							Type: "object",
+							Properties: map[string]*jsonschema.Schema{
 								"input": {
 									Description: "The string input to echo",
-									Type:        humav2.TypeString,
+									Type:        "string",
 								},
 							},
 						},

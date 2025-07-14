@@ -4,38 +4,38 @@ import (
 	"fmt"
 	"strings"
 
-	humav2 "github.com/danielgtaylor/huma/v2"
+	"github.com/modelcontextprotocol/go-sdk/jsonschema"
 )
 
 // ToolDef struct represents a tool with various configurations.
 type ToolDef struct {
-	Name                string            `json:"name,omitempty"`
-	Description         string            `json:"description,omitempty"`
-	MaxTokens           int               `json:"maxTokens,omitempty"`
-	ModelName           string            `json:"modelName,omitempty"`
-	ModelProvider       bool              `json:"modelProvider,omitempty"`
-	JSONResponse        bool              `json:"jsonResponse,omitempty"`
-	Chat                bool              `json:"chat,omitempty"`
-	Temperature         *float32          `json:"temperature,omitempty"`
-	Cache               *bool             `json:"cache,omitempty"`
-	InternalPrompt      *bool             `json:"internalPrompt"`
-	Arguments           *humav2.Schema    `json:"arguments,omitempty"`
-	Tools               []string          `json:"tools,omitempty"`
-	GlobalTools         []string          `json:"globalTools,omitempty"`
-	GlobalModelName     string            `json:"globalModelName,omitempty"`
-	Context             []string          `json:"context,omitempty"`
-	ExportContext       []string          `json:"exportContext,omitempty"`
-	Export              []string          `json:"export,omitempty"`
-	Agents              []string          `json:"agents,omitempty"`
-	Credentials         []string          `json:"credentials,omitempty"`
-	ExportCredentials   []string          `json:"exportCredentials,omitempty"`
-	InputFilters        []string          `json:"inputFilters,omitempty"`
-	ExportInputFilters  []string          `json:"exportInputFilters,omitempty"`
-	OutputFilters       []string          `json:"outputFilters,omitempty"`
-	ExportOutputFilters []string          `json:"exportOutputFilters,omitempty"`
-	Instructions        string            `json:"instructions,omitempty"`
-	Type                string            `json:"type,omitempty"`
-	MetaData            map[string]string `json:"metadata,omitempty"`
+	Name                string             `json:"name,omitempty"`
+	Description         string             `json:"description,omitempty"`
+	MaxTokens           int                `json:"maxTokens,omitempty"`
+	ModelName           string             `json:"modelName,omitempty"`
+	ModelProvider       bool               `json:"modelProvider,omitempty"`
+	JSONResponse        bool               `json:"jsonResponse,omitempty"`
+	Chat                bool               `json:"chat,omitempty"`
+	Temperature         *float32           `json:"temperature,omitempty"`
+	Cache               *bool              `json:"cache,omitempty"`
+	InternalPrompt      *bool              `json:"internalPrompt"`
+	Arguments           *jsonschema.Schema `json:"arguments,omitempty"`
+	Tools               []string           `json:"tools,omitempty"`
+	GlobalTools         []string           `json:"globalTools,omitempty"`
+	GlobalModelName     string             `json:"globalModelName,omitempty"`
+	Context             []string           `json:"context,omitempty"`
+	ExportContext       []string           `json:"exportContext,omitempty"`
+	Export              []string           `json:"export,omitempty"`
+	Agents              []string           `json:"agents,omitempty"`
+	Credentials         []string           `json:"credentials,omitempty"`
+	ExportCredentials   []string           `json:"exportCredentials,omitempty"`
+	InputFilters        []string           `json:"inputFilters,omitempty"`
+	ExportInputFilters  []string           `json:"exportInputFilters,omitempty"`
+	OutputFilters       []string           `json:"outputFilters,omitempty"`
+	ExportOutputFilters []string           `json:"exportOutputFilters,omitempty"`
+	Instructions        string             `json:"instructions,omitempty"`
+	Type                string             `json:"type,omitempty"`
+	MetaData            map[string]string  `json:"metadata,omitempty"`
 }
 
 func ToolDefsToNodes(tools []ToolDef) []Node {
@@ -52,16 +52,16 @@ func ToolDefsToNodes(tools []ToolDef) []Node {
 	return nodes
 }
 
-func ObjectSchema(kv ...string) *humav2.Schema {
-	s := &humav2.Schema{
-		Type:       humav2.TypeObject,
-		Properties: make(map[string]*humav2.Schema, len(kv)/2),
+func ObjectSchema(kv ...string) *jsonschema.Schema {
+	s := &jsonschema.Schema{
+		Type:       "object",
+		Properties: make(map[string]*jsonschema.Schema, len(kv)/2),
 	}
 	for i, v := range kv {
 		if i%2 == 1 {
-			s.Properties[kv[i-1]] = &humav2.Schema{
+			s.Properties[kv[i-1]] = &jsonschema.Schema{
 				Description: v,
-				Type:        humav2.TypeString,
+				Type:        "string",
 			}
 		}
 	}
