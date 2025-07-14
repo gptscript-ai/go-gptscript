@@ -567,7 +567,7 @@ func TestRestartFailedRun(t *testing.T) {
 		t.Errorf("Expected error but got nil")
 	}
 
-	run.opts.GlobalOptions.Env = nil
+	run.opts.Env = nil
 	run, err = run.NextChat(context.Background(), "")
 	if err != nil {
 		t.Fatalf("Error executing next run: %v", err)
@@ -1037,21 +1037,23 @@ func TestToolWithGlobalTools(t *testing.T) {
 
 	for e := range run.Events() {
 		if e.Run != nil {
-			if e.Run.Type == EventTypeRunStart {
+			switch e.Run.Type {
+			case EventTypeRunStart:
 				runStartSeen = true
-			} else if e.Run.Type == EventTypeRunFinish {
+			case EventTypeRunFinish:
 				runFinishSeen = true
 			}
 		} else if e.Call != nil {
-			if e.Call.Type == EventTypeCallStart {
+			switch e.Call.Type {
+			case EventTypeCallStart:
 				callStartSeen = true
-			} else if e.Call.Type == EventTypeCallFinish {
+			case EventTypeCallFinish:
 				callFinishSeen = true
 
 				for _, o := range e.Call.Output {
 					eventContent += o.Content
 				}
-			} else if e.Call.Type == EventTypeCallProgress {
+			case EventTypeCallProgress:
 				callProgressSeen = true
 			}
 		}
