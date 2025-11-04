@@ -1,6 +1,6 @@
 module github.com/gptscript-ai/go-gptscript
 
-go 1.24.2
+go 1.25.3
 
 require (
 	github.com/modelcontextprotocol/go-sdk v0.2.0
