@@ -3,7 +3,7 @@ module github.com/gptscript-ai/go-gptscript
 go 1.25.3
 
 require (
-	github.com/modelcontextprotocol/go-sdk v0.2.0
+	github.com/google/jsonschema-go v0.4.2
 	github.com/stretchr/testify v1.10.0
 )
 

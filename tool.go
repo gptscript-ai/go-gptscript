@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/modelcontextprotocol/go-sdk/jsonschema"
+	"github.com/google/jsonschema-go/jsonschema"
 )
 
 // ToolDef struct represents a tool with various configurations.
